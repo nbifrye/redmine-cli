@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -12,6 +13,9 @@ func newIssueCommand() *cobra.Command {
 	issueCmd.AddCommand(newIssueListCommand())
 	issueCmd.AddCommand(newIssueViewCommand())
 	issueCmd.AddCommand(newIssueCreateCommand())
+	issueCmd.AddCommand(newIssueUpdateCommand())
+	issueCmd.AddCommand(newIssueCloseCommand())
+	issueCmd.AddCommand(newIssueNoteAddCommand())
 	return issueCmd
 }
 
@@ -95,5 +99,90 @@ func newIssueCreateCommand() *cobra.Command {
 	cmd.Flags().StringVar(&description, "description", "", "Issue description")
 	_ = cmd.MarkFlagRequired("project")
 	_ = cmd.MarkFlagRequired("subject")
+	return cmd
+}
+
+func newIssueUpdateCommand() *cobra.Command {
+	var subject, description, statusID, assignedToID string
+
+	cmd := &cobra.Command{
+		Use:   "update <issue-id>",
+		Short: "Update issue",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := mustRuntime()
+			if err != nil {
+				return err
+			}
+
+			issue := map[string]any{}
+			if subject != "" {
+				issue["subject"] = subject
+			}
+			if description != "" {
+				issue["description"] = description
+			}
+			if statusID != "" {
+				issue["status_id"] = statusID
+			}
+			if assignedToID != "" {
+				issue["assigned_to_id"] = assignedToID
+			}
+
+			if len(issue) == 0 {
+				return errors.New("at least one field must be provided (--subject, --description, --status-id, --assigned-to-id)")
+			}
+
+			payload := map[string]any{"issue": issue}
+			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPut, Path: "/issues/" + args[0] + ".json", Body: payload})
+			return handleRequestResult(raw, code, reqErr)
+		},
+	}
+
+	cmd.Flags().StringVar(&subject, "subject", "", "New issue subject")
+	cmd.Flags().StringVar(&description, "description", "", "New issue description")
+	cmd.Flags().StringVar(&statusID, "status-id", "", "New status id")
+	cmd.Flags().StringVar(&assignedToID, "assigned-to-id", "", "New assignee user id")
+	return cmd
+}
+
+func newIssueCloseCommand() *cobra.Command {
+	var closedStatusID string
+	cmd := &cobra.Command{
+		Use:   "close <issue-id>",
+		Short: "Close issue",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := mustRuntime()
+			if err != nil {
+				return err
+			}
+			payload := map[string]any{"issue": map[string]any{"status_id": closedStatusID}}
+			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPut, Path: "/issues/" + args[0] + ".json", Body: payload})
+			return handleRequestResult(raw, code, reqErr)
+		},
+	}
+	cmd.Flags().StringVar(&closedStatusID, "status-id", "5", "Status id used for closed issues")
+	return cmd
+}
+
+func newIssueNoteAddCommand() *cobra.Command {
+	var notes string
+	cmd := &cobra.Command{
+		Use:   "note-add <issue-id>",
+		Short: "Add note to issue",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := mustRuntime()
+			if err != nil {
+				return err
+			}
+			payload := map[string]any{"issue": map[string]any{"notes": notes}}
+			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPut, Path: "/issues/" + args[0] + ".json", Body: payload})
+			return handleRequestResult(raw, code, reqErr)
+		},
+	}
+	cmd.Flags().StringVar(&notes, "notes", "", "Note body")
+	_ = cmd.MarkFlagRequired("notes")
 	return cmd
 }

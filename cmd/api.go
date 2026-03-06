@@ -13,6 +13,8 @@ func newAPICommand() *cobra.Command {
 	apiCmd := &cobra.Command{Use: "api", Short: "Generic API command"}
 	apiCmd.AddCommand(newAPIGetCommand())
 	apiCmd.AddCommand(newAPIPostCommand())
+	apiCmd.AddCommand(newAPIPutCommand())
+	apiCmd.AddCommand(newAPIDeleteCommand())
 	return apiCmd
 }
 
@@ -54,6 +56,46 @@ func newAPIPostCommand() *cobra.Command {
 	cmd.Flags().StringVar(&bodyArg, "body", "", "JSON string or @file.json")
 	_ = cmd.MarkFlagRequired("body")
 	return cmd
+}
+
+func newAPIPutCommand() *cobra.Command {
+	var bodyArg string
+	cmd := &cobra.Command{
+		Use:   "put <path>",
+		Short: "PUT endpoint with JSON body",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := mustRuntime()
+			if err != nil {
+				return err
+			}
+			body, err := readBodyArg(bodyArg)
+			if err != nil {
+				return err
+			}
+			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPut, Path: args[0], RawBodyJSON: body})
+			return handleRequestResult(raw, code, reqErr)
+		},
+	}
+	cmd.Flags().StringVar(&bodyArg, "body", "", "JSON string or @file.json")
+	_ = cmd.MarkFlagRequired("body")
+	return cmd
+}
+
+func newAPIDeleteCommand() *cobra.Command {
+	return &cobra.Command{
+		Use:   "delete <path>",
+		Short: "DELETE endpoint",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			r, err := mustRuntime()
+			if err != nil {
+				return err
+			}
+			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodDelete, Path: args[0]})
+			return handleRequestResult(raw, code, reqErr)
+		},
+	}
 }
 
 func readBodyArg(v string) ([]byte, error) {
