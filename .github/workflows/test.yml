@@ -6,6 +6,10 @@ on:
       - '**'
   pull_request:
 
+permissions:
+  contents: read
+  pull-requests: write
+
 jobs:
   go-test:
     runs-on: ubuntu-latest
@@ -18,8 +22,93 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Run tests
-        run: go test ./...
+      - name: Run tests with coverage
+        id: test
+        run: |
+          set +e
+          go test -covermode=atomic -coverprofile=coverage.out -json ./... | tee test-report.jsonl
+          status=${PIPESTATUS[0]}
+          echo "exit_code=${status}" >> "$GITHUB_OUTPUT"
+          exit 0
+
+      - name: Generate coverage summary
+        id: coverage
+        if: always()
+        run: |
+          if [ -f coverage.out ]; then
+            total=$(go tool cover -func=coverage.out | awk '/^total:/ {print $3}')
+            echo "total=${total}" >> "$GITHUB_OUTPUT"
+          else
+            echo "total=N/A" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Build PR test report
+        if: always() && github.event_name == 'pull_request'
+        env:
+          COVERAGE_TOTAL: ${{ steps.coverage.outputs.total }}
+          TEST_EXIT_CODE: ${{ steps.test.outputs.exit_code }}
+        run: |
+          python3 - <<'PY'
+          import json
+          import os
+          from collections import Counter
+
+          counters = Counter()
+          failed_tests = []
+
+          try:
+            with open('test-report.jsonl', 'r', encoding='utf-8') as f:
+              for line in f:
+                line = line.strip()
+                if not line:
+                  continue
+                try:
+                  obj = json.loads(line)
+                except json.JSONDecodeError:
+                  continue
+                action = obj.get('Action')
+                test_name = obj.get('Test')
+                if action and test_name:
+                  if action in ('pass', 'fail', 'skip'):
+                    counters[action] += 1
+                  if action == 'fail':
+                    failed_tests.append(f"- `{obj.get('Package', 'unknown')}` / `{test_name}`")
+          except FileNotFoundError:
+            pass
+
+          coverage = os.environ.get('COVERAGE_TOTAL', 'N/A')
+          exit_code = os.environ.get('TEST_EXIT_CODE', '1')
+          status = '✅ Success' if exit_code == '0' else '❌ Failed'
+
+          lines = [
+            '## Go test report',
+            '',
+            f'- **Status:** {status}',
+            f'- **Coverage (total):** `{coverage}`',
+            f'- **Passed tests:** {counters.get("pass", 0)}',
+            f'- **Failed tests:** {counters.get("fail", 0)}',
+            f'- **Skipped tests:** {counters.get("skip", 0)}',
+          ]
+
+          if failed_tests:
+            lines.extend(['', '### Failed tests', *failed_tests[:50]])
+            if len(failed_tests) > 50:
+              lines.append(f'- ...and {len(failed_tests) - 50} more')
+
+          with open('pr-comment.md', 'w', encoding='utf-8') as f:
+            f.write('\n'.join(lines) + '\n')
+          PY
+
+      - name: Comment PR with test report
+        if: always() && github.event_name == 'pull_request'
+        uses: marocchino/sticky-pull-request-comment@v2
+        with:
+          header: go-test-report
+          path: pr-comment.md
+
+      - name: Fail workflow when tests fail
+        if: steps.test.outputs.exit_code != '0'
+        run: exit 1
 
       - name: Build
         run: go build ./...
