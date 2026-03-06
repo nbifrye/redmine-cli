@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"net/http"
-	"os"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -84,7 +83,7 @@ func newIssueCreateCommand() *cobra.Command {
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPost, Path: "/issues.json", Body: payload})
 			if reqErr != nil {
 				if code > 0 {
-					os.Exit(code)
+					exitFunc(code)
 				}
 				return reqErr
 			}

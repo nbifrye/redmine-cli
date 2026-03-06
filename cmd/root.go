@@ -14,6 +14,7 @@ var (
 	verbose    bool
 	debug      bool
 	noColor    bool
+	exitFunc   = os.Exit
 )
 
 var rootCmd = &cobra.Command{
@@ -58,7 +59,7 @@ func printJSON(v any) error {
 func handleRequestResult(raw json.RawMessage, exitCode int, err error) error {
 	if err != nil {
 		if exitCode > 0 {
-			os.Exit(exitCode)
+			exitFunc(exitCode)
 		}
 		return err
 	}
