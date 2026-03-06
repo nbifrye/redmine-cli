@@ -41,7 +41,6 @@ func newIssueListCommand() *cobra.Command {
 			}
 			if all {
 				query["limit"] = "100"
-				query["offset"] = "0"
 			}
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/issues.json", Query: query})
 			return handleRequestResult(raw, code, reqErr)
@@ -52,7 +51,7 @@ func newIssueListCommand() *cobra.Command {
 	cmd.Flags().StringVar(&assignedTo, "assigned-to", "", "Filter by assignee (e.g. me)")
 	cmd.Flags().IntVar(&page, "page", 1, "Page number")
 	cmd.Flags().IntVar(&perPage, "per-page", 25, "Items per page")
-	cmd.Flags().BoolVar(&all, "all", false, "Fetch all pages (best effort)")
+	cmd.Flags().BoolVar(&all, "all", false, "Fetch up to 100 issues, ignoring --page and --per-page")
 	return cmd
 }
 
@@ -85,13 +84,7 @@ func newIssueCreateCommand() *cobra.Command {
 			}
 			payload := map[string]any{"issue": map[string]any{"project_id": project, "subject": subject, "description": description}}
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodPost, Path: "/issues.json", Body: payload})
-			if reqErr != nil {
-				if code > 0 {
-					exitFunc(code)
-				}
-				return reqErr
-			}
-			return handleRequestResult(raw, code, nil)
+			return handleRequestResult(raw, code, reqErr)
 		},
 	}
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Project identifier or id")

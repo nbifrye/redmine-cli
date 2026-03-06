@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"net/http"
 	"strconv"
 
@@ -58,6 +59,9 @@ func newTimeEntryCreateCommand() *cobra.Command {
 		Use:   "create",
 		Short: "Create time entry",
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if issueID == "" && projectID == "" {
+				return errors.New("either --issue-id or --project-id is required")
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err
