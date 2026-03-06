@@ -28,3 +28,21 @@ redmine api post /issues.json --body @issue.json
 ```bash
 go build ./...
 ```
+
+## Homebrew (custom tap)
+
+このリポジトリを tap として利用して `redmine` をインストールできます。
+
+1. `Formula/redmine-cli.rb` 内の `YOUR_GITHUB_USER` を、実際の GitHub ユーザー/組織名に置き換える。
+2. 変更を push した上で、以下を実行する。
+
+```bash
+brew tap YOUR_GITHUB_USER/redmine-cli
+brew install redmine-cli
+```
+
+更新時は以下で最新版（main ブランチ）を再インストールできます。
+
+```bash
+brew reinstall redmine-cli
+```
