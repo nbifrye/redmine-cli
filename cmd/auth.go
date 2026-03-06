@@ -41,7 +41,7 @@ func newAuthLoginCommand() *cobra.Command {
 			raw, code, err := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/users/current.json"})
 			if err != nil {
 				if code > 0 {
-					os.Exit(code)
+					exitFunc(code)
 				}
 				return err
 			}

@@ -7,9 +7,19 @@ import (
 	"redmine-cli/cmd"
 )
 
-func main() {
-	if err := cmd.Execute(); err != nil {
+var (
+	execute = cmd.Execute
+	osExit  = os.Exit
+)
+
+func run() int {
+	if err := execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
-		os.Exit(1)
+		return 1
 	}
+	return 0
+}
+
+func main() {
+	osExit(run())
 }

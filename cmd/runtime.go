@@ -33,6 +33,15 @@ type Runtime struct {
 	Client  *http.Client
 }
 
+var (
+	userHomeDir   = os.UserHomeDir
+	osReadFile    = os.ReadFile
+	osMkdirAll    = os.MkdirAll
+	osWriteFile   = os.WriteFile
+	yamlMarshal   = yaml.Marshal
+	yamlUnmarshal = yaml.Unmarshal
+)
+
 type RequestOptions struct {
 	Method      string
 	Path        string
@@ -152,14 +161,14 @@ func LoadConfig() (*Config, error) {
 	}
 	cfg := &Config{Hosts: map[string]HostConfig{}}
 
-	b, err := os.ReadFile(path)
+	b, err := osReadFile(path)
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			return cfg, nil
 		}
 		return nil, err
 	}
-	if err := yaml.Unmarshal(b, cfg); err != nil {
+	if err := yamlUnmarshal(b, cfg); err != nil {
 		return nil, err
 	}
 	if cfg.Hosts == nil {
@@ -176,21 +185,21 @@ func SaveConfig(cfg *Config) error {
 	if cfg.Hosts == nil {
 		cfg.Hosts = map[string]HostConfig{}
 	}
-	if err := os.MkdirAll(filepath.Dir(path), 0o700); err != nil {
+	if err := osMkdirAll(filepath.Dir(path), 0o700); err != nil {
 		return err
 	}
-	b, err := yaml.Marshal(cfg)
+	b, err := yamlMarshal(cfg)
 	if err != nil {
 		return err
 	}
-	if err := os.WriteFile(path, b, 0o600); err != nil {
+	if err := osWriteFile(path, b, 0o600); err != nil {
 		return err
 	}
 	return nil
 }
 
 func configPath() (string, error) {
-	home, err := os.UserHomeDir()
+	home, err := userHomeDir()
 	if err != nil {
 		return "", err
 	}
