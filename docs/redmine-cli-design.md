@@ -163,7 +163,7 @@ Go を推奨。
 - CLI パーサ: `cobra`
 - 設定: `viper`（または標準ライブラリ + YAML のみ）
 - HTTP: `net/http`（追加依存を抑える）
-- 出力整形: `encoding/json`, `text/tabwriter`
+- 出力整形: `encoding/json`
 
 > 依存を増やしすぎず、`gh` のような高機能化は段階的に行う。
 
