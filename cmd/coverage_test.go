@@ -276,6 +276,13 @@ func TestCommandRunEPaths(t *testing.T) {
 			w.WriteHeader(http.StatusNoContent)
 		case strings.HasPrefix(r.URL.Path, "/users/current.json"):
 			_, _ = w.Write([]byte(`{"user":{"id":1}}`))
+		case strings.HasPrefix(r.URL.Path, "/users"):
+			_, _ = w.Write([]byte(`{"users":[]}`))
+		case strings.HasPrefix(r.URL.Path, "/time_entries") && r.Method == http.MethodGet:
+			_, _ = w.Write([]byte(`{"time_entries":[]}`))
+		case strings.HasPrefix(r.URL.Path, "/time_entries") && r.Method == http.MethodPost:
+			_, _ = io.Copy(io.Discard, r.Body)
+			_, _ = w.Write([]byte(`{"time_entry":{"id":1}}`))
 		default:
 			_, _ = w.Write([]byte(`{"ok":true}`))
 		}
@@ -352,6 +359,34 @@ func TestCommandRunEPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := newAuthStatusCommand().RunE(newAuthStatusCommand(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := newUserListCommand().RunE(newUserListCommand(), nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := newUserViewCommand().RunE(newUserViewCommand(), []string{"1"}); err != nil {
+		t.Fatal(err)
+	}
+	timeList := newTimeEntryListCommand()
+	_ = timeList.Flags().Set("user-id", "me")
+	if err := timeList.RunE(timeList, nil); err != nil {
+		t.Fatal(err)
+	}
+	timeCreate := newTimeEntryCreateCommand()
+	_ = timeCreate.Flags().Set("issue-id", "1")
+	_ = timeCreate.Flags().Set("hours", "1.5")
+	_ = timeCreate.Flags().Set("activity-id", "9")
+	_ = timeCreate.Flags().Set("spent-on", "2025-01-01")
+	_ = timeCreate.Flags().Set("comments", "work")
+	if err := timeCreate.RunE(timeCreate, nil); err != nil {
+		t.Fatal(err)
+	}
+	timeCreateWithProject := newTimeEntryCreateCommand()
+	_ = timeCreateWithProject.Flags().Set("project-id", "2")
+	_ = timeCreateWithProject.Flags().Set("hours", "2")
+	_ = timeCreateWithProject.Flags().Set("activity-id", "9")
+	_ = timeCreateWithProject.Flags().Set("spent-on", "2025-01-02")
+	if err := timeCreateWithProject.RunE(timeCreateWithProject, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -494,6 +529,16 @@ func TestMustRuntimeErrorBranchesForCommands(t *testing.T) {
 			c := newIssueNoteAddCommand()
 			_ = c.Flags().Set("notes", "x")
 			return c.RunE(c, []string{"1"})
+		},
+		func() error { return newUserListCommand().RunE(newUserListCommand(), nil) },
+		func() error { return newUserViewCommand().RunE(newUserViewCommand(), []string{"1"}) },
+		func() error { return newTimeEntryListCommand().RunE(newTimeEntryListCommand(), nil) },
+		func() error {
+			c := newTimeEntryCreateCommand()
+			_ = c.Flags().Set("hours", "1")
+			_ = c.Flags().Set("activity-id", "9")
+			_ = c.Flags().Set("spent-on", "2025-01-01")
+			return c.RunE(c, nil)
 		},
 	}
 	for i, fn := range checks {

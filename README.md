@@ -23,6 +23,12 @@ redmine project list
 redmine project view myproj
 redmine project create --identifier myproj --name "My Project"
 
+redmine user list --name taro
+redmine user view 10
+
+redmine time-entry list --user-id me --from 2025-01-01 --to 2025-01-31
+redmine time-entry create --issue-id 123 --hours 1.5 --activity-id 9 --spent-on 2025-01-31 --comments "実装"
+
 redmine api get /issues/123.json
 redmine api post /issues.json --body @issue.json
 redmine api put /issues/123.json --body @issue.json
