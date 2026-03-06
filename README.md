@@ -33,11 +33,11 @@ go build ./...
 
 このリポジトリを tap として利用して `redmine` をインストールできます。
 
-1. `Formula/redmine-cli.rb` 内の `YOUR_GITHUB_USER` を、実際の GitHub ユーザー/組織名に置き換える。
-2. 変更を push した上で、以下を実行する。
-
+このリポジトリは `homebrew-` プレフィックスなしのため、tap 追加時に URL を明示します。
+brew tap nbifrye/redmine-cli https://github.com/nbifrye/redmine-cli
+brew install nbifrye/redmine-cli/redmine-cli
 ```bash
-brew tap YOUR_GITHUB_USER/redmine-cli
+brew reinstall nbifrye/redmine-cli/redmine-cli
 brew install redmine-cli
 ```
 
