@@ -12,6 +12,7 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+	"time"
 
 	"gopkg.in/yaml.v3"
 )
@@ -50,6 +51,18 @@ type RequestOptions struct {
 	RawBodyJSON []byte
 }
 
+// newRuntime constructs a Runtime with the standard HTTP client timeout.
+// Use this instead of constructing Runtime directly to ensure consistent configuration.
+func newRuntime(host, apiKey string, verbose, debug bool) *Runtime {
+	return &Runtime{
+		Host:    strings.TrimRight(host, "/"),
+		APIKey:  apiKey,
+		Verbose: verbose,
+		Debug:   debug,
+		Client:  &http.Client{Timeout: 30 * time.Second},
+	}
+}
+
 func LoadRuntime(hostFlag, apiKeyFlag string, verbose, debug bool) (*Runtime, error) {
 	cfg, err := LoadConfig()
 	if err != nil {
@@ -66,7 +79,7 @@ func LoadRuntime(hostFlag, apiKeyFlag string, verbose, debug bool) (*Runtime, er
 		return nil, errors.New("API key is not configured; run `redmine auth login` or set REDMINE_API_KEY")
 	}
 
-	return &Runtime{Host: strings.TrimRight(host, "/"), APIKey: apiKey, Verbose: verbose, Debug: debug, Client: &http.Client{}}, nil
+	return newRuntime(host, apiKey, verbose, debug), nil
 }
 
 func (r *Runtime) DoJSON(opts RequestOptions) (json.RawMessage, int, error) {
@@ -236,9 +249,9 @@ func buildStatusMessage(code int, body string) string {
 	}
 	switch code {
 	case 401:
-		return "authentication failed (401): APIキーを確認し、`redmine auth login` を再実行してください" + suffix
+		return "authentication failed (401): check your API key and re-run `redmine auth login`" + suffix
 	case 404:
-		return "resource not found (404): project/issue ID やパスを確認してください" + suffix
+		return "resource not found (404): check the project/issue ID or path" + suffix
 	default:
 		return fmt.Sprintf("request failed (%d)%s", code, suffix)
 	}

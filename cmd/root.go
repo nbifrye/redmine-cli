@@ -13,17 +13,12 @@ var (
 	apiKeyFlag string
 	verbose    bool
 	debug      bool
-	noColor    bool
 	exitFunc   = os.Exit
 )
 
 var rootCmd = &cobra.Command{
 	Use:   "redmine",
 	Short: "Redmine CLI",
-	PersistentPreRunE: func(cmd *cobra.Command, args []string) error {
-		_ = noColor
-		return nil
-	},
 }
 
 func Execute() error {
@@ -35,7 +30,6 @@ func init() {
 	rootCmd.PersistentFlags().StringVar(&apiKeyFlag, "api-key", "", "Redmine API key")
 	rootCmd.PersistentFlags().BoolVar(&verbose, "verbose", false, "Show request/response summary")
 	rootCmd.PersistentFlags().BoolVar(&debug, "debug", false, "Show HTTP details")
-	rootCmd.PersistentFlags().BoolVar(&noColor, "no-color", false, "Disable colored output")
 
 	rootCmd.AddCommand(newAuthCommand())
 	rootCmd.AddCommand(newIssueCommand())
@@ -61,6 +55,8 @@ func printJSON(v any) error {
 func handleRequestResult(raw json.RawMessage, exitCode int, err error) error {
 	if err != nil {
 		if exitCode > 0 {
+			// exitFunc is os.Exit in production (process terminates here) and
+			// overridden in tests to capture the exit code without terminating.
 			exitFunc(exitCode)
 		}
 		return err

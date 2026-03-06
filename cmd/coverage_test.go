@@ -82,6 +82,9 @@ func TestLoadRuntimeAndHelpers(t *testing.T) {
 	if err != nil || r.Host != "http://h" || r.APIKey != "k" || !r.Verbose || !r.Debug {
 		t.Fatalf("LoadRuntime unexpected: r=%+v err=%v", r, err)
 	}
+	if r.Client.Timeout == 0 {
+		t.Fatal("expected non-zero HTTP client timeout")
+	}
 
 	if got := firstNonEmpty(" ", " a "); got != "a" {
 		t.Fatalf("firstNonEmpty=%q", got)
@@ -479,6 +482,14 @@ func TestAdditionalCommandErrorPaths(t *testing.T) {
 		t.Fatal("expected update field validation error")
 	}
 
+	timeCreateNoTarget := newTimeEntryCreateCommand()
+	_ = timeCreateNoTarget.Flags().Set("hours", "1")
+	_ = timeCreateNoTarget.Flags().Set("activity-id", "9")
+	_ = timeCreateNoTarget.Flags().Set("spent-on", "2025-01-01")
+	if err := timeCreateNoTarget.RunE(timeCreateNoTarget, nil); err == nil {
+		t.Fatal("expected time-entry create validation error (no issue-id or project-id)")
+	}
+
 	stdinOld := os.Stdin
 	stdoutOld := os.Stdout
 	rIn, wIn, _ := os.Pipe()
@@ -535,6 +546,7 @@ func TestMustRuntimeErrorBranchesForCommands(t *testing.T) {
 		func() error { return newTimeEntryListCommand().RunE(newTimeEntryListCommand(), nil) },
 		func() error {
 			c := newTimeEntryCreateCommand()
+			_ = c.Flags().Set("issue-id", "1")
 			_ = c.Flags().Set("hours", "1")
 			_ = c.Flags().Set("activity-id", "9")
 			_ = c.Flags().Set("spent-on", "2025-01-01")
