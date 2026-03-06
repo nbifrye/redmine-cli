@@ -261,12 +261,19 @@ func TestCommandRunEPaths(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/projects"):
+			if r.Method == http.MethodPost {
+				_, _ = io.Copy(io.Discard, r.Body)
+				_, _ = w.Write([]byte(`{"project":{"id":1}}`))
+				return
+			}
 			_, _ = w.Write([]byte(`{"projects":[]}`))
 		case strings.HasPrefix(r.URL.Path, "/issues") && r.Method == http.MethodGet:
 			_, _ = w.Write([]byte(`{"issues":[]}`))
-		case strings.HasPrefix(r.URL.Path, "/issues") && r.Method == http.MethodPost:
+		case strings.HasPrefix(r.URL.Path, "/issues") && (r.Method == http.MethodPost || r.Method == http.MethodPut):
 			_, _ = io.Copy(io.Discard, r.Body)
 			_, _ = w.Write([]byte(`{"issue":{"id":1}}`))
+		case strings.HasPrefix(r.URL.Path, "/issues") && r.Method == http.MethodDelete:
+			w.WriteHeader(http.StatusNoContent)
 		case strings.HasPrefix(r.URL.Path, "/users/current.json"):
 			_, _ = w.Write([]byte(`{"user":{"id":1}}`))
 		default:
@@ -287,11 +294,27 @@ func TestCommandRunEPaths(t *testing.T) {
 	if err := post.RunE(post, []string{"/ok"}); err != nil {
 		t.Fatal(err)
 	}
+	put := newAPIPutCommand()
+	if err := put.Flags().Set("body", `{"x":2}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := put.RunE(put, []string{"/ok"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := newAPIDeleteCommand().RunE(newAPIDeleteCommand(), []string{"/issues/1.json"}); err != nil {
+		t.Fatal(err)
+	}
 
 	if err := newProjectListCommand().RunE(newProjectListCommand(), nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := newProjectViewCommand().RunE(newProjectViewCommand(), []string{"abc"}); err != nil {
+		t.Fatal(err)
+	}
+	projectCreate := newProjectCreateCommand()
+	_ = projectCreate.Flags().Set("identifier", "proj")
+	_ = projectCreate.Flags().Set("name", "Project")
+	if err := projectCreate.RunE(projectCreate, nil); err != nil {
 		t.Fatal(err)
 	}
 
@@ -303,6 +326,22 @@ func TestCommandRunEPaths(t *testing.T) {
 		t.Fatal(err)
 	}
 	if err := newIssueViewCommand().RunE(newIssueViewCommand(), []string{"1"}); err != nil {
+		t.Fatal(err)
+	}
+	update := newIssueUpdateCommand()
+	_ = update.Flags().Set("subject", "updated")
+	_ = update.Flags().Set("description", "updated description")
+	_ = update.Flags().Set("status-id", "2")
+	_ = update.Flags().Set("assigned-to-id", "10")
+	if err := update.RunE(update, []string{"1"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := newIssueCloseCommand().RunE(newIssueCloseCommand(), []string{"1"}); err != nil {
+		t.Fatal(err)
+	}
+	noteAdd := newIssueNoteAddCommand()
+	_ = noteAdd.Flags().Set("notes", "memo")
+	if err := noteAdd.RunE(noteAdd, []string{"1"}); err != nil {
 		t.Fatal(err)
 	}
 	create := newIssueCreateCommand()
@@ -365,6 +404,13 @@ func TestAdditionalCommandErrorPaths(t *testing.T) {
 	if err := post.RunE(post, []string{"/x"}); err == nil {
 		t.Fatal("expected file read error")
 	}
+	put := newAPIPutCommand()
+	if err := put.Flags().Set("body", "@"); err != nil {
+		t.Fatal(err)
+	}
+	if err := put.RunE(put, []string{"/x"}); err == nil {
+		t.Fatal("expected file read error")
+	}
 
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.URL.Path == "/issues.json" && r.Method == http.MethodPost {
@@ -392,6 +438,10 @@ func TestAdditionalCommandErrorPaths(t *testing.T) {
 	_ = create.Flags().Set("subject", "s")
 	if err := create.RunE(create, nil); err == nil || exited != 1 {
 		t.Fatalf("expected create error + exit capture: err=%v exited=%d", err, exited)
+	}
+	update := newIssueUpdateCommand()
+	if err := update.RunE(update, []string{"1"}); err == nil {
+		t.Fatal("expected update field validation error")
 	}
 
 	stdinOld := os.Stdin
@@ -430,6 +480,20 @@ func TestMustRuntimeErrorBranchesForCommands(t *testing.T) {
 			c := newAPIPostCommand()
 			_ = c.Flags().Set("body", `{"a":1}`)
 			return c.RunE(c, []string{"/x"})
+		},
+		func() error {
+			c := newAPIPutCommand()
+			_ = c.Flags().Set("body", `{"a":1}`)
+			return c.RunE(c, []string{"/x"})
+		},
+		func() error { return newAPIDeleteCommand().RunE(newAPIDeleteCommand(), []string{"/x"}) },
+		func() error { return newProjectCreateCommand().RunE(newProjectCreateCommand(), nil) },
+		func() error { return newIssueUpdateCommand().RunE(newIssueUpdateCommand(), []string{"1"}) },
+		func() error { return newIssueCloseCommand().RunE(newIssueCloseCommand(), []string{"1"}) },
+		func() error {
+			c := newIssueNoteAddCommand()
+			_ = c.Flags().Set("notes", "x")
+			return c.RunE(c, []string{"1"})
 		},
 	}
 	for i, fn := range checks {

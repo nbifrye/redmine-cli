@@ -15,12 +15,18 @@ redmine auth status
 redmine issue list --project myproj --status open
 redmine issue view 123
 redmine issue create --project myproj --subject "バグ修正" --description "..."
+redmine issue update 123 --status-id 2 --assigned-to-id 10
+redmine issue close 123
+redmine issue note-add 123 --notes "調査結果を追記"
 
 redmine project list
 redmine project view myproj
+redmine project create --identifier myproj --name "My Project"
 
 redmine api get /issues/123.json
 redmine api post /issues.json --body @issue.json
+redmine api put /issues/123.json --body @issue.json
+redmine api delete /issues/123.json
 ```
 
 ## Build
