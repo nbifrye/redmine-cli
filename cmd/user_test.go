@@ -44,3 +44,64 @@ func TestUserCommandsMustRuntimeError(t *testing.T) {
 		}
 	}
 }
+
+func TestUserListHTTPError(t *testing.T) {
+	cases := []struct {
+		status   int
+		wantExit int
+	}{
+		{http.StatusUnauthorized, 1},
+		{http.StatusInternalServerError, 2},
+	}
+	for _, tc := range cases {
+		withConfigRuntime(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		hostFlag = srv.URL
+		apiKeyFlag = "k"
+
+		exited := 0
+		oldExit := exitFunc
+		exitFunc = func(code int) { exited = code }
+
+		err := newUserListCommand().RunE(newUserListCommand(), nil)
+		exitFunc = oldExit
+		srv.Close()
+
+		if err == nil || exited != tc.wantExit {
+			t.Errorf("status %d: want err+exit=%d, got err=%v exited=%d", tc.status, tc.wantExit, err, exited)
+		}
+	}
+}
+
+func TestUserViewHTTPError(t *testing.T) {
+	cases := []struct {
+		status   int
+		wantExit int
+	}{
+		{http.StatusUnauthorized, 1},
+		{http.StatusNotFound, 1},
+		{http.StatusInternalServerError, 2},
+	}
+	for _, tc := range cases {
+		withConfigRuntime(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		hostFlag = srv.URL
+		apiKeyFlag = "k"
+
+		exited := 0
+		oldExit := exitFunc
+		exitFunc = func(code int) { exited = code }
+
+		err := newUserViewCommand().RunE(newUserViewCommand(), []string{"1"})
+		exitFunc = oldExit
+		srv.Close()
+
+		if err == nil || exited != tc.wantExit {
+			t.Errorf("status %d: want err+exit=%d, got err=%v exited=%d", tc.status, tc.wantExit, err, exited)
+		}
+	}
+}
