@@ -18,7 +18,7 @@ func newUserListCommand() *cobra.Command {
 	var status string
 	var name string
 	var groupID string
-	var page, perPage int
+	var offset, limit int
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -32,8 +32,8 @@ func newUserListCommand() *cobra.Command {
 				"status":   status,
 				"name":     name,
 				"group_id": groupID,
-				"page":     strconv.Itoa(page),
-				"limit":    strconv.Itoa(perPage),
+				"offset":   strconv.Itoa(offset),
+				"limit":    strconv.Itoa(limit),
 			}
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/users.json", Query: query})
 			return handleRequestResult(raw, code, reqErr)
@@ -43,8 +43,8 @@ func newUserListCommand() *cobra.Command {
 	cmd.Flags().StringVar(&status, "status", "1", "User status (1: active, 2: registered, 3: locked)")
 	cmd.Flags().StringVar(&name, "name", "", "Filter by user name")
 	cmd.Flags().StringVar(&groupID, "group-id", "", "Filter by group id")
-	cmd.Flags().IntVar(&page, "page", 1, "Page number")
-	cmd.Flags().IntVar(&perPage, "per-page", 25, "Items per page")
+	cmd.Flags().IntVar(&offset, "offset", 0, "Number of items to skip")
+	cmd.Flags().IntVar(&limit, "limit", 25, "Number of items per page")
 	return cmd
 }
 

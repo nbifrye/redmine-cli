@@ -17,7 +17,7 @@ func newTimeEntryCommand() *cobra.Command {
 
 func newTimeEntryListCommand() *cobra.Command {
 	var issueID, projectID, userID, from, to string
-	var page, perPage int
+	var offset, limit int
 
 	cmd := &cobra.Command{
 		Use:   "list",
@@ -33,8 +33,8 @@ func newTimeEntryListCommand() *cobra.Command {
 				"user_id":    userID,
 				"from":       from,
 				"to":         to,
-				"page":       strconv.Itoa(page),
-				"limit":      strconv.Itoa(perPage),
+				"offset":     strconv.Itoa(offset),
+				"limit":      strconv.Itoa(limit),
 			}
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/time_entries.json", Query: query})
 			return handleRequestResult(raw, code, reqErr)
@@ -46,8 +46,8 @@ func newTimeEntryListCommand() *cobra.Command {
 	cmd.Flags().StringVar(&userID, "user-id", "", "Filter by user id (e.g. me)")
 	cmd.Flags().StringVar(&from, "from", "", "Start date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&to, "to", "", "End date (YYYY-MM-DD)")
-	cmd.Flags().IntVar(&page, "page", 1, "Page number")
-	cmd.Flags().IntVar(&perPage, "per-page", 25, "Items per page")
+	cmd.Flags().IntVar(&offset, "offset", 0, "Number of items to skip")
+	cmd.Flags().IntVar(&limit, "limit", 25, "Number of items per page")
 	return cmd
 }
 

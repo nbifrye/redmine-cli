@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -68,6 +69,28 @@ func TestTimeEntryCreateValidation(t *testing.T) {
 	_ = c.Flags().Set("spent-on", "2025-01-01")
 	if err := c.RunE(c, nil); err == nil {
 		t.Fatal("expected validation error (no issue-id or project-id)")
+	}
+}
+
+func TestTimeEntryListQueryParams(t *testing.T) {
+	withConfigRuntime(t)
+	queryC := make(chan url.Values, 1)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		queryC <- r.URL.Query()
+		_, _ = w.Write([]byte(`{"time_entries":[]}`))
+	}))
+	defer server.Close()
+	hostFlag = server.URL
+	apiKeyFlag = "k"
+
+	cmd := newTimeEntryListCommand()
+	_ = cmd.Flags().Set("offset", "50")
+	if err := cmd.RunE(cmd, nil); err != nil {
+		t.Fatal(err)
+	}
+	got := <-queryC
+	if v := got.Get("offset"); v != "50" {
+		t.Errorf("query param %q: got %q, want %q", "offset", v, "50")
 	}
 }
 

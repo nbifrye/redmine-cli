@@ -21,7 +21,7 @@ func newIssueCommand() *cobra.Command {
 
 func newIssueListCommand() *cobra.Command {
 	var project, status, assignedTo string
-	var page, perPage int
+	var offset, limit int
 	var all bool
 
 	cmd := &cobra.Command{
@@ -33,14 +33,15 @@ func newIssueListCommand() *cobra.Command {
 				return err
 			}
 			query := map[string]string{
-				"project_id":  project,
-				"status_id":   status,
-				"assigned_to": assignedTo,
-				"page":        strconv.Itoa(page),
-				"limit":       strconv.Itoa(perPage),
+				"project_id":     project,
+				"status_id":      status,
+				"assigned_to_id": assignedTo,
+				"offset":         strconv.Itoa(offset),
+				"limit":          strconv.Itoa(limit),
 			}
 			if all {
 				query["limit"] = "100"
+				query["offset"] = "0"
 			}
 			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/issues.json", Query: query})
 			return handleRequestResult(raw, code, reqErr)
@@ -49,9 +50,9 @@ func newIssueListCommand() *cobra.Command {
 	cmd.Flags().StringVarP(&project, "project", "p", "", "Filter by project identifier")
 	cmd.Flags().StringVarP(&status, "status", "s", "open", "Filter by status id (default: open)")
 	cmd.Flags().StringVar(&assignedTo, "assigned-to", "", "Filter by assignee (e.g. me)")
-	cmd.Flags().IntVar(&page, "page", 1, "Page number")
-	cmd.Flags().IntVar(&perPage, "per-page", 25, "Items per page")
-	cmd.Flags().BoolVar(&all, "all", false, "Fetch up to 100 issues, ignoring --page and --per-page")
+	cmd.Flags().IntVar(&offset, "offset", 0, "Number of items to skip")
+	cmd.Flags().IntVar(&limit, "limit", 25, "Number of items per page")
+	cmd.Flags().BoolVar(&all, "all", false, "Fetch up to 100 issues, ignoring --offset and --limit")
 	return cmd
 }
 

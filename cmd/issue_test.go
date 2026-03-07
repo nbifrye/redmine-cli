@@ -4,6 +4,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 )
@@ -105,6 +106,57 @@ func TestIssueUpdateValidation(t *testing.T) {
 	// No fields set → validation error
 	if err := newIssueUpdateCommand().RunE(newIssueUpdateCommand(), []string{"1"}); err == nil {
 		t.Fatal("expected update field validation error")
+	}
+}
+
+func TestIssueListQueryParams(t *testing.T) {
+	tests := []struct {
+		name   string
+		flags  map[string]string
+		checks map[string]string
+	}{
+		{
+			name:   "assigned_to_id is sent",
+			flags:  map[string]string{"assigned-to": "me"},
+			checks: map[string]string{"assigned_to_id": "me"},
+		},
+		{
+			name:   "offset is sent",
+			flags:  map[string]string{"offset": "25"},
+			checks: map[string]string{"offset": "25"},
+		},
+		{
+			name:   "all sets limit=100 and offset=0",
+			flags:  map[string]string{"all": "true"},
+			checks: map[string]string{"limit": "100", "offset": "0"},
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			withConfigRuntime(t)
+			queryC := make(chan url.Values, 1)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				queryC <- r.URL.Query()
+				_, _ = w.Write([]byte(`{"issues":[]}`))
+			}))
+			defer server.Close()
+			hostFlag = server.URL
+			apiKeyFlag = "k"
+
+			cmd := newIssueListCommand()
+			for k, v := range tc.flags {
+				_ = cmd.Flags().Set(k, v)
+			}
+			if err := cmd.RunE(cmd, nil); err != nil {
+				t.Fatal(err)
+			}
+			got := <-queryC
+			for key, want := range tc.checks {
+				if v := got.Get(key); v != want {
+					t.Errorf("query param %q: got %q, want %q", key, v, want)
+				}
+			}
+		})
 	}
 }
 
