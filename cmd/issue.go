@@ -57,7 +57,8 @@ func newIssueListCommand() *cobra.Command {
 }
 
 func newIssueViewCommand() *cobra.Command {
-	return &cobra.Command{
+	var notes bool
+	cmd := &cobra.Command{
 		Use:   "view <issue-id>",
 		Short: "View issue",
 		Args:  cobra.ExactArgs(1),
@@ -69,10 +70,16 @@ func newIssueViewCommand() *cobra.Command {
 			if err != nil {
 				return err
 			}
-			raw, code, reqErr := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/issues/" + args[0] + ".json"})
+			opts := RequestOptions{Method: http.MethodGet, Path: "/issues/" + args[0] + ".json"}
+			if notes {
+				opts.Query = map[string]string{"include": "journals"}
+			}
+			raw, code, reqErr := r.DoJSON(opts)
 			return handleRequestResult(raw, code, reqErr)
 		},
 	}
+	cmd.Flags().BoolVar(&notes, "notes", false, "Include notes (journals)")
+	return cmd
 }
 
 func newIssueCreateCommand() *cobra.Command {
