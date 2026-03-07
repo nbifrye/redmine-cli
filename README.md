@@ -2,7 +2,7 @@
 
 Redmine REST API を操作するためのシンプルな CLI ツールです。
 
-## Install
+## インストール
 
 ### Homebrew
 
@@ -11,7 +11,7 @@ brew tap nbifrye/redmine-cli https://github.com/nbifrye/redmine-cli
 brew install nbifrye/redmine-cli/redmine-cli
 ```
 
-### Build from source
+### ソースからビルド
 
 ```bash
 go build ./...
@@ -27,7 +27,7 @@ npx skills add nbifrye/redmine-cli
 
 インストール後は `/redmine-cli` でスキルを呼び出せます。
 
-## Usage
+## 使い方
 
 ```bash
 redmine auth login
@@ -53,4 +53,4 @@ redmine api put /issues/123.json --body @issue.json
 redmine api delete /issues/123.json
 ```
 
-グローバルフラグ: `--host`, `--api-key`, `--verbose`, `--debug`
+グローバルフラグ: `--host`、`--api-key`、`--verbose`、`--debug`

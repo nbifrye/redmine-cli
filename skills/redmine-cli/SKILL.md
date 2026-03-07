@@ -1,36 +1,36 @@
 ---
 name: redmine-cli
 description: |
-  Use when working with the redmine-cli tool to interact with a Redmine instance.
-  Helps authenticate, manage issues, projects, and users via CLI.
-  Invoke as /redmine-cli to get assistance with Redmine workflows.
+  Redmine インスタンスを操作する redmine-cli ツールを使う際に呼び出します。
+  CLI を通じた認証、課題・プロジェクト・ユーザーの管理を支援します。
+  /redmine-cli として呼び出すと Redmine ワークフローをサポートします。
 user-invocable: true
-argument-hint: "[task or question]"
+argument-hint: "[タスクまたは質問]"
 ---
 
-# redmine-cli Skill
+# redmine-cli スキル
 
-You are an expert assistant for the `redmine-cli` tool — a Go-based CLI for the Redmine REST API.
+あなたは `redmine-cli` ツールの専門アシスタントです。Redmine REST API を操作する Go 製 CLI です。
 
-When the user asks you to perform Redmine operations, construct and run the appropriate `redmine` commands. Interpret JSON output and summarize the results in human-readable form rather than dumping raw JSON.
+ユーザーから Redmine の操作を依頼されたら、適切な `redmine` コマンドを構築して実行してください。JSON 出力をそのまま表示するのではなく、内容を解釈して人間が読みやすい形式で結果を要約してください。
 
-## Setup & Authentication
+## セットアップ・認証
 
-### Interactive login
+### 対話形式でログイン
 
 ```bash
 redmine auth login
-# Prompts for: Redmine host URL, then API key
-# Validates by calling /users/current.json
+# プロンプトで入力: Redmine ホスト URL、次に API キー
+# /users/current.json を呼び出して検証
 ```
 
 ```bash
-redmine auth status   # Show current host and authenticated user
+redmine auth status   # 現在のホストと認証済みユーザーを表示
 ```
 
-### Configuration file
+### 設定ファイル
 
-Location: `~/.config/redmine-cli/config.yml`
+場所: `~/.config/redmine-cli/config.yml`
 
 ```yaml
 default_host: https://redmine.example.com
@@ -39,13 +39,13 @@ hosts:
     api_key: "your-api-key-here"
 ```
 
-### Priority order (highest to lowest)
+### 優先順位（高い順）
 
-1. CLI flags (`--host`, `--api-key`)
-2. Environment variables (`REDMINE_HOST`, `REDMINE_API_KEY`)
-3. Config file (`~/.config/redmine-cli/config.yml`)
+1. CLI フラグ（`--host`、`--api-key`）
+2. 環境変数（`REDMINE_HOST`、`REDMINE_API_KEY`）
+3. 設定ファイル（`~/.config/redmine-cli/config.yml`）
 
-### CI / non-interactive usage
+### CI / 非対話型での使用
 
 ```bash
 export REDMINE_HOST=https://redmine.example.com
@@ -55,123 +55,123 @@ redmine issue list --project myproj
 
 ---
 
-## Issue Workflows
+## 課題ワークフロー
 
-### List issues
-
-```bash
-redmine issue list                                      # Open issues (default: --status open)
-redmine issue list --project myproj                    # Filter by project
-redmine issue list --assigned-to me                    # Assigned to current user
-redmine issue list --status "*"                        # All statuses
-redmine issue list --all                               # Up to 100 issues
-redmine issue list --page 2 --per-page 50              # Pagination
-```
-
-### View issue detail
+### 課題一覧
 
 ```bash
-redmine issue view 123                                  # Includes journals/notes in JSON
+redmine issue list                                      # オープンな課題（デフォルト: --status open）
+redmine issue list --project myproj                    # プロジェクトでフィルタ
+redmine issue list --assigned-to me                    # 現在のユーザーに割り当て
+redmine issue list --status "*"                        # すべてのステータス
+redmine issue list --all                               # 最大 100 件の課題
+redmine issue list --page 2 --per-page 50              # ページネーション
 ```
 
-### Create issue
+### 課題詳細の表示
 
 ```bash
-redmine issue create --project myproj --subject "Fix login bug"
-redmine issue create --project myproj --subject "Task" --description "Details here"
+redmine issue view 123                                  # JSON にジャーナル/ノートを含む
 ```
 
-### Update issue
+### 課題の作成
+
+```bash
+redmine issue create --project myproj --subject "ログインバグを修正"
+redmine issue create --project myproj --subject "タスク" --description "詳細はこちら"
+```
+
+### 課題の更新
 
 ```bash
 redmine issue update 123 --status-id 2
-redmine issue update 123 --assigned-to-id 10 --subject "Updated title"
+redmine issue update 123 --assigned-to-id 10 --subject "更新されたタイトル"
 ```
 
-> If status IDs are unknown, discover them:
+> ステータス ID が不明な場合は、次のコマンドで確認できます：
 > ```bash
 > redmine api get /issue_statuses.json
 > ```
 
-### Close issue
+### 課題のクローズ
 
 ```bash
-redmine issue close 123             # Uses status ID 5 by default
-redmine issue close 123 --status-id 3   # Override status ID
+redmine issue close 123             # デフォルトはステータス ID 5 を使用
+redmine issue close 123 --status-id 3   # ステータス ID を上書き
 ```
 
-### Add note to issue
+### 課題にノートを追加
 
 ```bash
-redmine issue note-add 123 --notes "Investigation complete, fixed in commit abc123"
+redmine issue note-add 123 --notes "調査完了、コミット abc123 で修正済み"
 ```
 
 ---
 
-## Project Commands
+## プロジェクトコマンド
 
 ```bash
 redmine project list
-redmine project view myproj              # By identifier or numeric ID
+redmine project view myproj              # 識別子または数値 ID で指定
 redmine project create --identifier myproj --name "My Project"
-redmine project create --identifier myproj --name "My Project" --description "Description"
+redmine project create --identifier myproj --name "My Project" --description "説明"
 ```
 
-> `--identifier` must be unique and URL-safe (lowercase letters, numbers, hyphens).
+> `--identifier` は一意かつ URL セーフ（小文字・数字・ハイフン）である必要があります。
 
 ---
 
-## User Commands
+## ユーザーコマンド
 
 ```bash
-redmine user list                        # Active users (default: --status 1)
-redmine user list --name taro            # Search by name
-redmine user list --status 3             # Locked users
-redmine user view 10                     # View user by ID
-redmine auth status                      # View current authenticated user
+redmine user list                        # アクティブユーザー（デフォルト: --status 1）
+redmine user list --name taro            # 名前で検索
+redmine user list --status 3             # ロックされたユーザー
+redmine user view 10                     # ID でユーザーを表示
+redmine auth status                      # 現在の認証済みユーザーを表示
 ```
 
 ---
 
-## Raw API Escape Hatch
+## 生 API エスケープハッチ
 
-For endpoints not covered by named commands:
+名前付きコマンドでカバーされていないエンドポイントに使用：
 
 ```bash
 redmine api get /issue_statuses.json
 redmine api get /issue_priorities.json
 redmine api get /issues/123.json
 
-redmine api post /issues.json --body '{"issue":{"project_id":"myproj","subject":"Test"}}'
+redmine api post /issues.json --body '{"issue":{"project_id":"myproj","subject":"テスト"}}'
 redmine api put /issues/123.json --body '{"issue":{"status_id":2}}'
 redmine api delete /issues/123.json
 ```
 
 ---
 
-## Global Flags
+## グローバルフラグ
 
-| Flag | Description |
+| フラグ | 説明 |
 |------|-------------|
-| `--host <url>` | Override configured Redmine host for this invocation |
-| `--api-key <key>` | Override configured API key for this invocation |
-| `--verbose` | Print request method/URL and response status to stderr |
-| `--debug` | Print full HTTP headers and body to stderr |
+| `--host <url>` | この呼び出しで使用する Redmine ホストを上書き |
+| `--api-key <key>` | この呼び出しで使用する API キーを上書き |
+| `--verbose` | リクエストのメソッド/URL とレスポンスステータスを stderr に表示 |
+| `--debug` | HTTP ヘッダーとボディの全情報を stderr に表示 |
 
 ---
 
-## Error Reference
+## エラーリファレンス
 
-| Exit code | Meaning |
+| 終了コード | 意味 |
 |-----------|---------|
-| 0 | Success |
-| 1 | Client error (bad input, 401, 404) |
-| 2 | Network or server error |
+| 0 | 成功 |
+| 1 | クライアントエラー（入力不正、401、404） |
+| 2 | ネットワークまたはサーバーエラー |
 
-Common error messages:
+よくあるエラーメッセージ：
 
-- `authentication failed (401)` → Run `redmine auth login` or check `REDMINE_API_KEY`
-- `resource not found (404)` → Verify the project identifier or issue ID
-- `host is not configured` → Run `redmine auth login` or set `REDMINE_HOST`
-- `API key is not configured` → Run `redmine auth login` or set `REDMINE_API_KEY`
-- `at least one field must be provided` → Add at least one flag to `issue update`
+- `authentication failed (401)` → `redmine auth login` を実行するか `REDMINE_API_KEY` を確認する
+- `resource not found (404)` → プロジェクト識別子または課題 ID を確認する
+- `host is not configured` → `redmine auth login` を実行するか `REDMINE_HOST` を設定する
+- `API key is not configured` → `redmine auth login` を実行するか `REDMINE_API_KEY` を設定する
+- `at least one field must be provided` → `issue update` に少なくとも 1 つのフラグを追加する
