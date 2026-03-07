@@ -11,7 +11,7 @@ import (
 
 func TestTimeEntryCommandsSuccess(t *testing.T) {
 	withConfigRuntime(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/time_entries") && r.Method == http.MethodGet:
 			_, _ = w.Write([]byte(`{"time_entries":[]}`))
@@ -23,6 +23,7 @@ func TestTimeEntryCommandsSuccess(t *testing.T) {
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	timeList := newTimeEntryListCommand()
 	_ = timeList.Flags().Set("user-id", "me")
@@ -54,13 +55,14 @@ func TestTimeEntryCommandsSuccess(t *testing.T) {
 
 func TestTimeEntryCreateValidation(t *testing.T) {
 	withConfigRuntime(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		_, _ = w.Write([]byte(`{"time_entry":{"id":1}}`))
 	}))
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	// Neither issue-id nor project-id → validation error
 	c := newTimeEntryCreateCommand()
@@ -75,13 +77,14 @@ func TestTimeEntryCreateValidation(t *testing.T) {
 func TestTimeEntryListQueryParams(t *testing.T) {
 	withConfigRuntime(t)
 	queryC := make(chan url.Values, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		queryC <- r.URL.Query()
 		_, _ = w.Write([]byte(`{"time_entries":[]}`))
 	}))
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	cmd := newTimeEntryListCommand()
 	_ = cmd.Flags().Set("offset", "50")

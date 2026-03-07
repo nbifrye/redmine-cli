@@ -11,7 +11,7 @@ import (
 
 func newIssueTestServer(t *testing.T) *httptest.Server {
 	t.Helper()
-	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	return httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/issues") && r.Method == http.MethodGet:
 			_, _ = w.Write([]byte(`{"issues":[]}`))
@@ -32,6 +32,7 @@ func TestIssueCommandsSuccess(t *testing.T) {
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	list := newIssueListCommand()
 	if err := list.Flags().Set("all", "true"); err != nil {
@@ -75,13 +76,14 @@ func TestIssueCommandsSuccess(t *testing.T) {
 
 func TestIssueCreateHTTPError(t *testing.T) {
 	withConfigRuntime(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusUnauthorized)
 		_, _ = w.Write([]byte("bad"))
 	}))
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	exited := 0
 	oldExit := exitFunc
@@ -102,10 +104,40 @@ func TestIssueUpdateValidation(t *testing.T) {
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	// No fields set → validation error
 	if err := newIssueUpdateCommand().RunE(newIssueUpdateCommand(), []string{"1"}); err == nil {
 		t.Fatal("expected update field validation error")
+	}
+}
+
+func TestIssueInvalidID(t *testing.T) {
+	withConfigRuntime(t)
+	server := newIssueTestServer(t)
+	defer server.Close()
+	hostFlag = server.URL
+	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
+
+	invalidIDs := []string{"abc", "0", "-1", "1.5", "../etc"}
+	for _, id := range invalidIDs {
+		if err := newIssueViewCommand().RunE(newIssueViewCommand(), []string{id}); err == nil {
+			t.Errorf("issue view %q: expected invalid ID error, got nil", id)
+		}
+		update := newIssueUpdateCommand()
+		_ = update.Flags().Set("subject", "x")
+		if err := update.RunE(update, []string{id}); err == nil {
+			t.Errorf("issue update %q: expected invalid ID error, got nil", id)
+		}
+		if err := newIssueCloseCommand().RunE(newIssueCloseCommand(), []string{id}); err == nil {
+			t.Errorf("issue close %q: expected invalid ID error, got nil", id)
+		}
+		noteAdd := newIssueNoteAddCommand()
+		_ = noteAdd.Flags().Set("notes", "x")
+		if err := noteAdd.RunE(noteAdd, []string{id}); err == nil {
+			t.Errorf("issue note-add %q: expected invalid ID error, got nil", id)
+		}
 	}
 }
 
@@ -135,13 +167,14 @@ func TestIssueListQueryParams(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			withConfigRuntime(t)
 			queryC := make(chan url.Values, 1)
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				queryC <- r.URL.Query()
 				_, _ = w.Write([]byte(`{"issues":[]}`))
 			}))
 			defer server.Close()
 			hostFlag = server.URL
 			apiKeyFlag = "k"
+			newHTTPClient = func() *http.Client { return server.Client() }
 
 			cmd := newIssueListCommand()
 			for k, v := range tc.flags {

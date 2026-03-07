@@ -35,6 +35,9 @@ func newProjectViewCommand() *cobra.Command {
 		Short: "View project",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateProjectIdentifier(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err

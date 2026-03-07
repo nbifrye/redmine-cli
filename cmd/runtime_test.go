@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io"
@@ -23,11 +24,12 @@ type roundTripFunc func(*http.Request) (*http.Response, error)
 func (f roundTripFunc) RoundTrip(r *http.Request) (*http.Response, error) { return f(r) }
 
 // withConfigRuntime sets up a temporary HOME with a valid config file and resets global flags.
+// Tests that make HTTP calls must also switch to httptest.NewTLSServer and set newHTTPClient.
 func withConfigRuntime(t *testing.T) string {
 	t.Helper()
 	home := t.TempDir()
 	t.Setenv("HOME", home)
-	cfg := &Config{DefaultHost: "http://example.invalid", Hosts: map[string]HostConfig{"http://example.invalid": {APIKey: "k"}}}
+	cfg := &Config{DefaultHost: "https://example.invalid", Hosts: map[string]HostConfig{"https://example.invalid": {APIKey: "k"}}}
 	if err := SaveConfig(cfg); err != nil {
 		t.Fatalf("SaveConfig: %v", err)
 	}
@@ -35,6 +37,8 @@ func withConfigRuntime(t *testing.T) string {
 	apiKeyFlag = ""
 	verbose = false
 	debug = false
+	oldNewHTTPClient := newHTTPClient
+	t.Cleanup(func() { newHTTPClient = oldNewHTTPClient })
 	return home
 }
 
@@ -100,10 +104,10 @@ func TestLoadRuntimePrecedence(t *testing.T) {
 
 func TestLoadRuntimeVerboseDebugAndTimeout(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	t.Setenv("REDMINE_HOST", "http://h")
+	t.Setenv("REDMINE_HOST", "https://h")
 	t.Setenv("REDMINE_API_KEY", "k")
 	r, err := LoadRuntime("", "", true, true)
-	if err != nil || r.Host != "http://h" || r.APIKey != "k" || !r.Verbose || !r.Debug {
+	if err != nil || r.Host != "https://h" || r.APIKey != "k" || !r.Verbose || !r.Debug {
 		t.Fatalf("LoadRuntime unexpected: r=%+v err=%v", r, err)
 	}
 	if r.Client.Timeout == 0 {
@@ -122,8 +126,14 @@ func TestLoadRuntimeEdgeCases(t *testing.T) {
 		t.Fatal("expected missing host error")
 	}
 
-	// Host set via env but no API key → error
+	// HTTP host → invalid scheme error (HTTPS only)
 	t.Setenv("REDMINE_HOST", "http://h")
+	if _, err := LoadRuntime("", "", false, false); err == nil {
+		t.Fatal("expected invalid scheme error for http://")
+	}
+
+	// Host set via env (HTTPS) but no API key → error
+	t.Setenv("REDMINE_HOST", "https://h")
 	if _, err := LoadRuntime("", "", false, false); err == nil {
 		t.Fatal("expected missing API key")
 	}
@@ -397,5 +407,120 @@ func TestDoJSONAdditionalBranches(t *testing.T) {
 	// RawBodyJSON
 	if _, _, err := r.DoJSON(RequestOptions{Method: http.MethodPost, Path: "/ok", RawBodyJSON: []byte(`{"k":1}`)}); err != nil {
 		t.Fatal(err)
+	}
+}
+
+// --- validateHost ---
+
+func TestValidateHost(t *testing.T) {
+	ok := []string{
+		"https://redmine.example.com",
+		"https://redmine.example.com:8443",
+		"https://redmine.example.com/path",
+	}
+	for _, h := range ok {
+		if err := validateHost(h); err != nil {
+			t.Errorf("validateHost(%q) want nil, got %v", h, err)
+		}
+	}
+
+	bad := []string{
+		"http://redmine.example.com",
+		"ftp://redmine.example.com",
+		"//redmine.example.com",
+		"redmine.example.com",
+		"https://",
+		"",
+		"javascript:alert(1)",
+	}
+	for _, h := range bad {
+		if err := validateHost(h); err == nil {
+			t.Errorf("validateHost(%q) want error, got nil", h)
+		}
+	}
+}
+
+// --- validateNumericID ---
+
+func TestValidateNumericID(t *testing.T) {
+	ok := []string{"1", "42", "999999"}
+	for _, id := range ok {
+		if err := validateNumericID(id); err != nil {
+			t.Errorf("validateNumericID(%q) want nil, got %v", id, err)
+		}
+	}
+
+	bad := []string{"0", "-1", "abc", "1.5", "", "1a", " 1"}
+	for _, id := range bad {
+		if err := validateNumericID(id); err == nil {
+			t.Errorf("validateNumericID(%q) want error, got nil", id)
+		}
+	}
+}
+
+// --- validateProjectIdentifier ---
+
+func TestValidateProjectIdentifier(t *testing.T) {
+	ok := []string{"my-project", "123", "proj_name", "abc123"}
+	for _, id := range ok {
+		if err := validateProjectIdentifier(id); err != nil {
+			t.Errorf("validateProjectIdentifier(%q) want nil, got %v", id, err)
+		}
+	}
+
+	bad := []string{"../admin", "a/b", `a\b`, "a..b", ".."}
+	for _, id := range bad {
+		if err := validateProjectIdentifier(id); err == nil {
+			t.Errorf("validateProjectIdentifier(%q) want error, got nil", id)
+		}
+	}
+}
+
+// --- debug output redacts API key ---
+
+func TestDebugHeaderRedactsAPIKey(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer ts.Close()
+
+	// Capture stderr
+	oldErr := os.Stderr
+	pr, pw, _ := os.Pipe()
+	os.Stderr = pw
+	t.Cleanup(func() { os.Stderr = oldErr })
+
+	rt := &Runtime{Host: ts.URL, APIKey: "super-secret-key", Client: ts.Client(), Debug: true}
+	if _, _, err := rt.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/"}); err != nil {
+		t.Fatal(err)
+	}
+
+	_ = pw.Close()
+	var buf bytes.Buffer
+	_, _ = io.Copy(&buf, pr)
+
+	output := buf.String()
+	if strings.Contains(output, "super-secret-key") {
+		t.Error("API key must not appear in debug output")
+	}
+	if !strings.Contains(output, "[REDACTED]") {
+		t.Error("expected [REDACTED] in debug output for X-Redmine-API-Key header")
+	}
+}
+
+// --- newHTTPClient is injectable ---
+
+func TestNewHTTPClientInjectable(t *testing.T) {
+	called := false
+	old := newHTTPClient
+	newHTTPClient = func() *http.Client {
+		called = true
+		return &http.Client{}
+	}
+	t.Cleanup(func() { newHTTPClient = old })
+
+	_ = newRuntime("https://h", "k", false, false)
+	if !called {
+		t.Error("expected newHTTPClient to be called by newRuntime")
 	}
 }

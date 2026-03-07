@@ -11,6 +11,7 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
 	"strings"
 	"time"
 
@@ -51,6 +52,12 @@ type RequestOptions struct {
 	RawBodyJSON []byte
 }
 
+// newHTTPClient is the factory for creating HTTP clients.
+// Replaced in tests to inject TLS-capable clients for httptest.NewTLSServer.
+var newHTTPClient = func() *http.Client {
+	return &http.Client{Timeout: 30 * time.Second}
+}
+
 // newRuntime constructs a Runtime with the standard HTTP client timeout.
 // Use this instead of constructing Runtime directly to ensure consistent configuration.
 func newRuntime(host, apiKey string, verbose, debug bool) *Runtime {
@@ -59,7 +66,7 @@ func newRuntime(host, apiKey string, verbose, debug bool) *Runtime {
 		APIKey:  apiKey,
 		Verbose: verbose,
 		Debug:   debug,
-		Client:  &http.Client{Timeout: 30 * time.Second},
+		Client:  newHTTPClient(),
 	}
 }
 
@@ -72,6 +79,9 @@ func LoadRuntime(hostFlag, apiKeyFlag string, verbose, debug bool) (*Runtime, er
 	host := firstNonEmpty(hostFlag, os.Getenv("REDMINE_HOST"), cfg.DefaultHost)
 	if host == "" {
 		return nil, errors.New("host is not configured; run `redmine auth login` or set REDMINE_HOST")
+	}
+	if err := validateHost(host); err != nil {
+		return nil, err
 	}
 
 	apiKey := firstNonEmpty(apiKeyFlag, os.Getenv("REDMINE_API_KEY"), cfg.Hosts[host].APIKey)
@@ -122,7 +132,11 @@ func (r *Runtime) DoJSON(opts RequestOptions) (json.RawMessage, int, error) {
 	}
 	if r.Debug {
 		for k, values := range req.Header {
-			fmt.Fprintf(os.Stderr, "> %s: %s\n", k, strings.Join(values, ","))
+			val := strings.Join(values, ",")
+			if strings.EqualFold(k, "X-Redmine-API-Key") {
+				val = "[REDACTED]"
+			}
+			fmt.Fprintf(os.Stderr, "> %s: %s\n", k, val)
 		}
 	}
 
@@ -255,4 +269,32 @@ func buildStatusMessage(code int, body string) string {
 	default:
 		return fmt.Sprintf("request failed (%d)%s", code, suffix)
 	}
+}
+
+// validateHost returns an error if host is not a valid https:// URL.
+func validateHost(host string) error {
+	u, err := url.Parse(host)
+	if err != nil || u.Scheme != "https" || u.Host == "" {
+		return fmt.Errorf("invalid host URL %q: must start with https://", host)
+	}
+	return nil
+}
+
+// validateNumericID returns an error if id is not a positive integer.
+// Use for Redmine resources that only accept numeric IDs (issues, users).
+func validateNumericID(id string) error {
+	n, err := strconv.Atoi(id)
+	if err != nil || n <= 0 {
+		return fmt.Errorf("invalid ID %q: must be a positive integer", id)
+	}
+	return nil
+}
+
+// validateProjectIdentifier returns an error if id contains path separators
+// or traversal sequences. Project identifiers may be numeric or alphanumeric strings.
+func validateProjectIdentifier(id string) error {
+	if strings.ContainsAny(id, "/\\") || strings.Contains(id, "..") {
+		return fmt.Errorf("invalid project ID %q: must not contain path separators or traversal sequences", id)
+	}
+	return nil
 }

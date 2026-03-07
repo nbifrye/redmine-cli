@@ -25,14 +25,23 @@ func newAuthLoginCommand() *cobra.Command {
 		RunE: func(cmd *cobra.Command, args []string) error {
 			reader := bufio.NewReader(os.Stdin)
 			fmt.Fprint(os.Stdout, "Host URL: ")
-			host, _ := reader.ReadString('\n')
-			host = strings.TrimSpace(host)
+			hostRaw, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read host: %w", err)
+			}
+			host := strings.TrimSpace(hostRaw)
 			if host == "" {
 				return errors.New("host is required")
 			}
+			if err := validateHost(host); err != nil {
+				return err
+			}
 			fmt.Fprint(os.Stdout, "API key: ")
-			apiKey, _ := reader.ReadString('\n')
-			apiKey = strings.TrimSpace(apiKey)
+			apiKeyRaw, err := reader.ReadString('\n')
+			if err != nil {
+				return fmt.Errorf("failed to read API key: %w", err)
+			}
+			apiKey := strings.TrimSpace(apiKeyRaw)
 			if apiKey == "" {
 				return errors.New("API key is required")
 			}

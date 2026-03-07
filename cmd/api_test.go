@@ -40,11 +40,30 @@ func TestReadBodyArg(t *testing.T) {
 			t.Fatalf("unexpected file body: %s", string(got))
 		}
 	})
+
+	t.Run("file not found", func(t *testing.T) {
+		if _, err := readBodyArg("@/nonexistent/file.json"); err == nil {
+			t.Fatal("expected error for missing file")
+		}
+	})
+
+	t.Run("file exceeds size limit", func(t *testing.T) {
+		tmpDir := t.TempDir()
+		path := filepath.Join(tmpDir, "big.json")
+		// Write a file just over the 10 MB limit
+		big := make([]byte, maxBodyFileSize+1)
+		if err := os.WriteFile(path, big, 0o644); err != nil {
+			t.Fatalf("write file failed: %v", err)
+		}
+		if _, err := readBodyArg("@" + path); err == nil {
+			t.Fatal("expected error for file exceeding 10 MB limit")
+		}
+	})
 }
 
 func TestAPICommandsSuccess(t *testing.T) {
 	withConfigRuntime(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		_, _ = io.Copy(io.Discard, r.Body)
 		if r.Method == http.MethodDelete {
 			w.WriteHeader(http.StatusNoContent)
@@ -55,6 +74,7 @@ func TestAPICommandsSuccess(t *testing.T) {
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	if err := newAPIGetCommand().RunE(newAPIGetCommand(), []string{"/ok"}); err != nil {
 		t.Fatal(err)
@@ -79,7 +99,7 @@ func TestAPICommandsSuccess(t *testing.T) {
 }
 
 func TestAPICommandsBodyError(t *testing.T) {
-	hostFlag, apiKeyFlag = "http://example.com", "k"
+	hostFlag, apiKeyFlag = "https://example.com", "k"
 
 	post := newAPIPostCommand()
 	if err := post.Flags().Set("body", "@"); err != nil {
