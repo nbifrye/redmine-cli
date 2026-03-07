@@ -53,3 +53,40 @@ PR では以下を必須記載とする：
 - 主な変更点
 - テスト観点（正常系・異常系）
 - 互換性影響（あれば）
+
+## Redmine API 仕様との整合性確認
+
+Redmine のリソース操作を追加・変更する際は、必ず公式ドキュメントでパラメータ名を確認すること。
+
+### 公式ドキュメントの参照方法
+
+Redmine REST API ドキュメントは以下のパターンで参照できる：
+
+- API 概要: `https://www.redmine.org/projects/redmine/wiki/Rest_api`
+- 各リソース: `https://www.redmine.org/projects/redmine/wiki/Rest_<ResourceName>`
+  - 例: Issues → `Rest_Issues`、Projects → `Rest_Projects`、Users → `Rest_Users`
+  - 新しいリソースを追加する際も同じパターンでドキュメントを検索する
+
+### よくある誤りパターン
+
+| 誤り | 正しい | 理由 |
+|---|---|---|
+| `assigned_to` | `assigned_to_id` | アサイニーフィルタは `_id` サフィックスが必要 |
+| `page=N` / `per_page=M` | `offset=N` / `limit=M` | Redmine REST API のページネーションは `offset`+`limit` 方式 |
+
+### クエリパラメータの検証ルール
+
+フィルタ・ページネーションのパラメータを追加・変更した際は、テストでモックサーバー側のクエリを必ず検証すること。テストがリクエスト内容を検証していない場合、誤ったパラメータ名を使っても気づけない。
+
+```go
+queryC := make(chan url.Values, 1)
+server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+    queryC <- r.URL.Query()
+    _, _ = w.Write([]byte(`{"resources":[]}`))
+}))
+// ...
+got := <-queryC
+if v := got.Get("offset"); v != "25" {
+    t.Errorf("query param offset: got %q, want %q", v, "25")
+}
+```
