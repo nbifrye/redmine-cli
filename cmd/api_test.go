@@ -1,6 +1,9 @@
 package cmd
 
 import (
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"path/filepath"
 	"testing"
@@ -37,4 +40,82 @@ func TestReadBodyArg(t *testing.T) {
 			t.Fatalf("unexpected file body: %s", string(got))
 		}
 	})
+}
+
+func TestAPICommandsSuccess(t *testing.T) {
+	withConfigRuntime(t)
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = io.Copy(io.Discard, r.Body)
+		if r.Method == http.MethodDelete {
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		_, _ = w.Write([]byte(`{"ok":true}`))
+	}))
+	defer server.Close()
+	hostFlag = server.URL
+	apiKeyFlag = "k"
+
+	if err := newAPIGetCommand().RunE(newAPIGetCommand(), []string{"/ok"}); err != nil {
+		t.Fatal(err)
+	}
+	post := newAPIPostCommand()
+	if err := post.Flags().Set("body", `{"x":1}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := post.RunE(post, []string{"/ok"}); err != nil {
+		t.Fatal(err)
+	}
+	put := newAPIPutCommand()
+	if err := put.Flags().Set("body", `{"x":2}`); err != nil {
+		t.Fatal(err)
+	}
+	if err := put.RunE(put, []string{"/ok"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := newAPIDeleteCommand().RunE(newAPIDeleteCommand(), []string{"/issues/1.json"}); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAPICommandsBodyError(t *testing.T) {
+	hostFlag, apiKeyFlag = "http://example.com", "k"
+
+	post := newAPIPostCommand()
+	if err := post.Flags().Set("body", "@"); err != nil {
+		t.Fatal(err)
+	}
+	if err := post.RunE(post, []string{"/x"}); err == nil {
+		t.Fatal("expected file read error")
+	}
+
+	put := newAPIPutCommand()
+	if err := put.Flags().Set("body", "@"); err != nil {
+		t.Fatal(err)
+	}
+	if err := put.RunE(put, []string{"/x"}); err == nil {
+		t.Fatal("expected file read error")
+	}
+}
+
+func TestAPICommandsMustRuntimeError(t *testing.T) {
+	hostFlag, apiKeyFlag = "", ""
+	t.Setenv("HOME", t.TempDir())
+
+	if err := newAPIGetCommand().RunE(newAPIGetCommand(), []string{"/x"}); err == nil {
+		t.Fatal("expected mustRuntime error")
+	}
+	c := newAPIPostCommand()
+	_ = c.Flags().Set("body", `{"a":1}`)
+	if err := c.RunE(c, []string{"/x"}); err == nil {
+		t.Fatal("expected mustRuntime error")
+	}
+	c2 := newAPIPutCommand()
+	_ = c2.Flags().Set("body", `{"a":1}`)
+	if err := c2.RunE(c2, []string{"/x"}); err == nil {
+		t.Fatal("expected mustRuntime error")
+	}
+	if err := newAPIDeleteCommand().RunE(newAPIDeleteCommand(), []string{"/x"}); err == nil {
+		t.Fatal("expected mustRuntime error")
+	}
 }
