@@ -21,6 +21,10 @@ var rootCmd = &cobra.Command{
 	Short: "Redmine CLI",
 }
 
+func SetVersion(v string) {
+	rootCmd.Version = v
+}
+
 func Execute() error {
 	return rootCmd.Execute()
 }

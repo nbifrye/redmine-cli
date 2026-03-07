@@ -8,11 +8,13 @@ import (
 )
 
 var (
+	version = "dev"
 	execute = cmd.Execute
 	osExit  = os.Exit
 )
 
 func run() int {
+	cmd.SetVersion(version)
 	if err := execute(); err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		return 1
