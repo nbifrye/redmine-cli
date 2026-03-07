@@ -29,6 +29,8 @@ npx skills add nbifrye/redmine-cli
 
 ## 使い方
 
+詳しいコマンドリファレンスやワークフロー例は [`skills/redmine-cli/SKILL.md`](skills/redmine-cli/SKILL.md) を参照してください。
+
 ```bash
 redmine auth login
 redmine auth status
