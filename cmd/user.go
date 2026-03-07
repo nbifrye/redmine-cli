@@ -54,6 +54,9 @@ func newUserViewCommand() *cobra.Command {
 		Short: "View user",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateNumericID(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err

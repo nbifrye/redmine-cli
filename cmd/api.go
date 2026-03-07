@@ -2,12 +2,15 @@ package cmd
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"strings"
 
 	"github.com/spf13/cobra"
 )
+
+const maxBodyFileSize = 10 * 1024 * 1024 // 10 MB
 
 func newAPICommand() *cobra.Command {
 	apiCmd := &cobra.Command{Use: "api", Short: "Generic API command"}
@@ -103,7 +106,15 @@ func readBodyArg(v string) ([]byte, error) {
 		return nil, errors.New("--body is required")
 	}
 	if strings.HasPrefix(v, "@") {
-		return os.ReadFile(strings.TrimPrefix(v, "@"))
+		path := strings.TrimPrefix(v, "@")
+		fi, err := os.Stat(path)
+		if err != nil {
+			return nil, err
+		}
+		if fi.Size() > maxBodyFileSize {
+			return nil, fmt.Errorf("body file %q exceeds maximum allowed size of 10MB", path)
+		}
+		return os.ReadFile(path)
 	}
 	return []byte(v), nil
 }

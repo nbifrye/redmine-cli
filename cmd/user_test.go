@@ -10,7 +10,7 @@ import (
 
 func TestUserCommandsSuccess(t *testing.T) {
 	withConfigRuntime(t)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch {
 		case strings.HasPrefix(r.URL.Path, "/users/current.json"):
 			_, _ = w.Write([]byte(`{"user":{"id":1}}`))
@@ -21,6 +21,7 @@ func TestUserCommandsSuccess(t *testing.T) {
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	if err := newUserListCommand().RunE(newUserListCommand(), nil); err != nil {
 		t.Fatal(err)
@@ -31,16 +32,35 @@ func TestUserCommandsSuccess(t *testing.T) {
 	}
 }
 
+func TestUserViewInvalidID(t *testing.T) {
+	withConfigRuntime(t)
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"users":[]}`))
+	}))
+	defer server.Close()
+	hostFlag = server.URL
+	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
+
+	invalidIDs := []string{"abc", "0", "-1", "1.5"}
+	for _, id := range invalidIDs {
+		if err := newUserViewCommand().RunE(newUserViewCommand(), []string{id}); err == nil {
+			t.Errorf("user view %q: expected invalid ID error, got nil", id)
+		}
+	}
+}
+
 func TestUserListQueryParams(t *testing.T) {
 	withConfigRuntime(t)
 	queryC := make(chan url.Values, 1)
-	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		queryC <- r.URL.Query()
 		_, _ = w.Write([]byte(`{"users":[]}`))
 	}))
 	defer server.Close()
 	hostFlag = server.URL
 	apiKeyFlag = "k"
+	newHTTPClient = func() *http.Client { return server.Client() }
 
 	cmd := newUserListCommand()
 	_ = cmd.Flags().Set("offset", "50")
@@ -78,11 +98,12 @@ func TestUserListHTTPError(t *testing.T) {
 	}
 	for _, tc := range cases {
 		withConfigRuntime(t)
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(tc.status)
 		}))
 		hostFlag = srv.URL
 		apiKeyFlag = "k"
+		newHTTPClient = func() *http.Client { return srv.Client() }
 
 		exited := 0
 		oldExit := exitFunc
@@ -109,11 +130,12 @@ func TestUserViewHTTPError(t *testing.T) {
 	}
 	for _, tc := range cases {
 		withConfigRuntime(t)
-		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		srv := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(tc.status)
 		}))
 		hostFlag = srv.URL
 		apiKeyFlag = "k"
+		newHTTPClient = func() *http.Client { return srv.Client() }
 
 		exited := 0
 		oldExit := exitFunc

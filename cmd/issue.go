@@ -62,6 +62,9 @@ func newIssueViewCommand() *cobra.Command {
 		Short: "View issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateNumericID(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err
@@ -104,6 +107,9 @@ func newIssueUpdateCommand() *cobra.Command {
 		Short: "Update issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateNumericID(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err
@@ -147,6 +153,9 @@ func newIssueCloseCommand() *cobra.Command {
 		Short: "Close issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateNumericID(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err
@@ -167,6 +176,9 @@ func newIssueNoteAddCommand() *cobra.Command {
 		Short: "Add note to issue",
 		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
+			if err := validateNumericID(args[0]); err != nil {
+				return err
+			}
 			r, err := mustRuntime()
 			if err != nil {
 				return err
