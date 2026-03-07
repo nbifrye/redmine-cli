@@ -149,6 +149,61 @@ redmine api delete /issues/123.json
 
 ---
 
+## シェル展開とクォートの注意点
+
+`--subject`、`--description`、`--notes`、`--body` に渡す文字列は、シェルが解釈する前にエスケープが必要な文字を含むことがある。
+AI がコマンドを生成して実行する場面も含め、常に安全なクォートを意識すること。
+
+### 罠になる文字・構文
+
+| パターン | シェルでの解釈 |
+|---|---|
+| `$var` / `${VAR}` | 変数展開（意図しない値に置換される） |
+| `$(cmd)` / `` `cmd` `` | コマンド置換（コマンドが実行される） |
+| `!keyword` | bash 履歴展開（インタラクティブシェルで発動） |
+| `*` / `?` / `[...]` | glob 展開（裸の引数の場合にファイル名に展開される） |
+| 改行 | インラインで渡すのが困難（コマンドが途中で終端される） |
+
+### 安全なクォート方法
+
+**原則: シングルクォート `'...'` を使う**（`$`、`` ` ``、`!`、`\` を展開しない）
+
+```bash
+# 良い例 — シングルクォートで囲む
+redmine issue create --project myproj --subject '修正: $HOME パスのバグ'
+redmine issue note-add 123 --notes '手順: `make build` を実行して確認'
+redmine issue create --project myproj --subject '[urgent] ログイン失敗'
+```
+
+```bash
+# 悪い例 — ダブルクォートは $ や ` を展開してしまう
+redmine issue note-add 123 --notes "`make build` で再現"   # make build が実行される
+redmine issue create --project myproj --subject "$TITLE"   # 変数が展開される
+```
+
+**値の中にシングルクォートが含まれる場合**: `$'...'` 構文を使う
+
+```bash
+redmine issue create --project myproj --subject $'it\'s a bug'
+```
+
+**複数行・複雑な内容**: ヒアドキュメントでファイルに書き出し、`--body @file` で渡す
+
+```bash
+cat > /tmp/payload.json <<'EOF'
+{"issue":{"project_id":"myproj","subject":"タスク","description":"1行目\n2行目"}}
+EOF
+redmine api post /issues.json --body @/tmp/payload.json
+```
+
+### AI がコマンドを生成するときのルール
+
+- `--subject` / `--description` / `--notes` の値は**常にシングルクォートで囲む**
+- 値の中にシングルクォートが含まれる場合は `$'...'` 構文を使う
+- 複数行テキストや構造化データを渡す場合は `@file` 経由にする
+
+---
+
 ## グローバルフラグ
 
 | フラグ | 説明 |
