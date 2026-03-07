@@ -1,5 +1,7 @@
 # redmine-cli
 
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/nbifrye/redmine-cli)
+
 Redmine REST API を操作するためのシンプルな CLI ツールです。
 
 ## インストール
