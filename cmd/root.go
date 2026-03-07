@@ -39,7 +39,6 @@ func init() {
 	rootCmd.AddCommand(newIssueCommand())
 	rootCmd.AddCommand(newProjectCommand())
 	rootCmd.AddCommand(newUserCommand())
-	rootCmd.AddCommand(newTimeEntryCommand())
 	rootCmd.AddCommand(newAPICommand())
 }
 

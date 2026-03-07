@@ -14,7 +14,6 @@ redmine-cli/
 │   ├── issue.go               # issue list / view / create / update / close / note-add
 │   ├── project.go             # project list / view / create
 │   ├── user.go                # user list / view
-│   ├── time_entry.go          # time-entry list / create
 │   └── api.go                 # 生API呼び出し (get / post / put / delete)
 └── skills/
     └── redmine-cli/SKILL.md   # AI スキル定義（コマンドリファレンス）

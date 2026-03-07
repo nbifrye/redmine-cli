@@ -2,7 +2,7 @@
 name: redmine-cli
 description: |
   Use when working with the redmine-cli tool to interact with a Redmine instance.
-  Helps authenticate, manage issues, projects, users, and time entries via CLI.
+  Helps authenticate, manage issues, projects, and users via CLI.
   Invoke as /redmine-cli to get assistance with Redmine workflows.
 user-invocable: true
 argument-hint: "[task or question]"
@@ -108,48 +108,6 @@ redmine issue note-add 123 --notes "Investigation complete, fixed in commit abc1
 
 ---
 
-## Time Entry Workflows
-
-### List time entries
-
-```bash
-redmine time-entry list --user-id me --from 2025-01-01 --to 2025-01-31
-redmine time-entry list --issue-id 123
-redmine time-entry list --project-id myproj --from 2025-01-01
-```
-
-### Log time against an issue
-
-```bash
-redmine time-entry create \
-  --issue-id 123 \
-  --hours 2.5 \
-  --activity-id 9 \
-  --spent-on 2025-01-31 \
-  --comments "Implemented login fix"
-```
-
-Required flags: `--hours`, `--activity-id`, `--spent-on`
-Target: `--issue-id` OR `--project-id` (one is required)
-
-### Log time against a project
-
-```bash
-redmine time-entry create \
-  --project-id myproj \
-  --hours 1.0 \
-  --activity-id 9 \
-  --spent-on 2025-01-31
-```
-
-### Discover activity IDs
-
-```bash
-redmine api get /enumerations/time_entry_activities.json
-```
-
----
-
 ## Project Commands
 
 ```bash
@@ -182,7 +140,6 @@ For endpoints not covered by named commands:
 ```bash
 redmine api get /issue_statuses.json
 redmine api get /issue_priorities.json
-redmine api get /enumerations/time_entry_activities.json
 redmine api get /issues/123.json
 
 redmine api post /issues.json --body '{"issue":{"project_id":"myproj","subject":"Test"}}'
@@ -217,5 +174,4 @@ Common error messages:
 - `resource not found (404)` → Verify the project identifier or issue ID
 - `host is not configured` → Run `redmine auth login` or set `REDMINE_HOST`
 - `API key is not configured` → Run `redmine auth login` or set `REDMINE_API_KEY`
-- `either --issue-id or --project-id is required` → Add one of these flags to `time-entry create`
 - `at least one field must be provided` → Add at least one flag to `issue update`
