@@ -46,6 +46,12 @@ func TestIssueCommandsSuccess(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	viewWithNotes := newIssueViewCommand()
+	_ = viewWithNotes.Flags().Set("notes", "true")
+	if err := viewWithNotes.RunE(viewWithNotes, []string{"1"}); err != nil {
+		t.Fatal(err)
+	}
+
 	update := newIssueUpdateCommand()
 	_ = update.Flags().Set("subject", "updated")
 	_ = update.Flags().Set("description", "updated description")
@@ -188,6 +194,49 @@ func TestIssueListQueryParams(t *testing.T) {
 				if v := got.Get(key); v != want {
 					t.Errorf("query param %q: got %q, want %q", key, v, want)
 				}
+			}
+		})
+	}
+}
+
+func TestIssueViewNotesQueryParam(t *testing.T) {
+	tests := []struct {
+		name        string
+		notesFlag   string
+		wantInclude string
+	}{
+		{
+			name:        "--notes sends include=journals",
+			notesFlag:   "true",
+			wantInclude: "journals",
+		},
+		{
+			name:        "no --notes omits include param",
+			notesFlag:   "false",
+			wantInclude: "",
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			withConfigRuntime(t)
+			queryC := make(chan url.Values, 1)
+			server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				queryC <- r.URL.Query()
+				_, _ = w.Write([]byte(`{"issue":{"id":1}}`))
+			}))
+			defer server.Close()
+			hostFlag = server.URL
+			apiKeyFlag = "k"
+			newHTTPClient = func() *http.Client { return server.Client() }
+
+			cmd := newIssueViewCommand()
+			_ = cmd.Flags().Set("notes", tc.notesFlag)
+			if err := cmd.RunE(cmd, []string{"1"}); err != nil {
+				t.Fatal(err)
+			}
+			got := <-queryC
+			if v := got.Get("include"); v != tc.wantInclude {
+				t.Errorf("query param include: got %q, want %q", v, tc.wantInclude)
 			}
 		})
 	}
