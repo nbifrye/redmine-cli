@@ -16,8 +16,6 @@ redmine-cli/
 │   ├── user.go                # user list / view
 │   ├── time_entry.go          # time-entry list / create
 │   └── api.go                 # 生API呼び出し (get / post / put / delete)
-├── docs/
-│   └── redmine-cli-design.md  # 設計方針・意思決定の記録
 └── skills/
     └── redmine-cli/SKILL.md   # AI スキル定義（コマンドリファレンス）
 ```
@@ -44,6 +42,8 @@ redmine-cli/
 ## 実装ルール
 
 - エラー文言・ログ文言は、運用時の検索性を下げない一貫した語彙を使う。
+- エラーメッセージは「何が悪いか」と「次に何をすべきか」をセットで記述する（例: 401 → `auth login` を案内、404 → ID 確認を案内）。
+- exit code を統一する: `0`=成功、`1`=想定内エラー（入力不正・404 等）、`2`=通信/内部エラー。
 
 ## PR 記載
 
