@@ -34,6 +34,13 @@ func TestHandleRequestResult(t *testing.T) {
 	}
 }
 
+func TestSetVersion(t *testing.T) {
+	SetVersion("1.2.3")
+	if rootCmd.Version != "1.2.3" {
+		t.Fatalf("expected version 1.2.3, got %s", rootCmd.Version)
+	}
+}
+
 func TestExecute(t *testing.T) {
 	oldArgs := os.Args
 	os.Args = []string{"redmine", "--help"}

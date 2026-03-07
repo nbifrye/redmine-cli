@@ -54,3 +54,97 @@ func TestProjectCommandsMustRuntimeError(t *testing.T) {
 		}
 	}
 }
+
+func TestProjectListHTTPError(t *testing.T) {
+	cases := []struct {
+		status   int
+		wantExit int
+	}{
+		{http.StatusUnauthorized, 1},
+		{http.StatusInternalServerError, 2},
+	}
+	for _, tc := range cases {
+		withConfigRuntime(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		hostFlag = srv.URL
+		apiKeyFlag = "k"
+
+		exited := 0
+		oldExit := exitFunc
+		exitFunc = func(code int) { exited = code }
+
+		err := newProjectListCommand().RunE(newProjectListCommand(), nil)
+		exitFunc = oldExit
+		srv.Close()
+
+		if err == nil || exited != tc.wantExit {
+			t.Errorf("status %d: want err+exit=%d, got err=%v exited=%d", tc.status, tc.wantExit, err, exited)
+		}
+	}
+}
+
+func TestProjectViewHTTPError(t *testing.T) {
+	cases := []struct {
+		status   int
+		wantExit int
+	}{
+		{http.StatusUnauthorized, 1},
+		{http.StatusNotFound, 1},
+		{http.StatusInternalServerError, 2},
+	}
+	for _, tc := range cases {
+		withConfigRuntime(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		hostFlag = srv.URL
+		apiKeyFlag = "k"
+
+		exited := 0
+		oldExit := exitFunc
+		exitFunc = func(code int) { exited = code }
+
+		err := newProjectViewCommand().RunE(newProjectViewCommand(), []string{"abc"})
+		exitFunc = oldExit
+		srv.Close()
+
+		if err == nil || exited != tc.wantExit {
+			t.Errorf("status %d: want err+exit=%d, got err=%v exited=%d", tc.status, tc.wantExit, err, exited)
+		}
+	}
+}
+
+func TestProjectCreateHTTPError(t *testing.T) {
+	cases := []struct {
+		status   int
+		wantExit int
+	}{
+		{http.StatusUnauthorized, 1},
+		{http.StatusInternalServerError, 2},
+	}
+	for _, tc := range cases {
+		withConfigRuntime(t)
+		srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(tc.status)
+		}))
+		hostFlag = srv.URL
+		apiKeyFlag = "k"
+
+		exited := 0
+		oldExit := exitFunc
+		exitFunc = func(code int) { exited = code }
+
+		cmd := newProjectCreateCommand()
+		_ = cmd.Flags().Set("identifier", "proj")
+		_ = cmd.Flags().Set("name", "Project")
+		err := cmd.RunE(cmd, nil)
+		exitFunc = oldExit
+		srv.Close()
+
+		if err == nil || exited != tc.wantExit {
+			t.Errorf("status %d: want err+exit=%d, got err=%v exited=%d", tc.status, tc.wantExit, err, exited)
+		}
+	}
+}
