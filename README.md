@@ -46,7 +46,11 @@ go build ./...
 このリポジトリ（`nbifrye/redmine-cli`）を tap として利用できます。`homebrew-` prefix がないため、tap と install の両方でフル指定が必要です。
 
 ```bash
+# 安定版（推奨）
 brew tap nbifrye/redmine-cli https://github.com/nbifrye/redmine-cli
+brew install nbifrye/redmine-cli/redmine-cli
+
+# 最新の開発版
 brew install nbifrye/redmine-cli/redmine-cli --HEAD
 ```
 
@@ -54,4 +58,5 @@ brew install nbifrye/redmine-cli/redmine-cli --HEAD
 
 ```bash
 redmine --help
+redmine --version
 ```
