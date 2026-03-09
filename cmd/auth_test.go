@@ -7,17 +7,14 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
 
 func TestAuthLoginSuccess(t *testing.T) {
-	withConfigRuntime(t)
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"user":{"id":1}}`))
-	}))
-	defer server.Close()
-	newHTTPClient = func() *http.Client { return server.Client() }
+	home := t.TempDir()
+	t.Setenv("HOME", home)
 
 	stdinOld, stdoutOld := os.Stdin, os.Stdout
 	rIn, wIn, _ := os.Pipe()
@@ -26,7 +23,7 @@ func TestAuthLoginSuccess(t *testing.T) {
 	os.Stdout = wOut
 	t.Cleanup(func() { os.Stdin = stdinOld; os.Stdout = stdoutOld })
 
-	_, _ = wIn.WriteString(server.URL + "\nkey\n")
+	_, _ = wIn.WriteString("https://redmine.example.com\ntestkey\n")
 	_ = wIn.Close()
 	if err := newAuthLoginCommand().RunE(newAuthLoginCommand(), nil); err != nil {
 		t.Fatal(err)
@@ -36,6 +33,24 @@ func TestAuthLoginSuccess(t *testing.T) {
 	_, _ = io.Copy(&buf, rOut)
 	if !strings.Contains(buf.String(), "Login successful") {
 		t.Fatalf("unexpected output: %s", buf.String())
+	}
+
+	// 設定ファイルが作成されていることを確認
+	cfgPath := filepath.Join(home, ".config", "redmine-cli", "config.yml")
+	if _, err := os.Stat(cfgPath); err != nil {
+		t.Fatalf("config file not created: %v", err)
+	}
+
+	// 設定内容が正しいことを確認
+	cfg, err := LoadConfig()
+	if err != nil {
+		t.Fatalf("LoadConfig after login: %v", err)
+	}
+	if cfg.DefaultHost != "https://redmine.example.com" {
+		t.Errorf("DefaultHost: got %q, want %q", cfg.DefaultHost, "https://redmine.example.com")
+	}
+	if got := cfg.Hosts["https://redmine.example.com"].APIKey; got != "testkey" {
+		t.Errorf("APIKey: got %q, want %q", got, "testkey")
 	}
 }
 
@@ -97,26 +112,17 @@ func TestAuthLoginStdinEOF(t *testing.T) {
 }
 
 func TestAuthLoginConfigError(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"user":{}}`))
-	}))
-	defer server.Close()
-
 	stdinOld, stdoutOld := os.Stdin, os.Stdout
 	rOut, wOut, _ := os.Pipe()
 	os.Stdout = wOut
 	t.Cleanup(func() { os.Stdin = stdinOld; os.Stdout = stdoutOld })
 
-	oldHTTPClient := newHTTPClient
-	t.Cleanup(func() { newHTTPClient = oldHTTPClient })
-
 	// userHomeDir error → LoadConfig fails
 	oldHome := userHomeDir
 	userHomeDir = func() (string, error) { return "", errors.New("home") }
-	newHTTPClient = func() *http.Client { return server.Client() }
 	rIn, wIn, _ := os.Pipe()
 	os.Stdin = rIn
-	_, _ = wIn.WriteString(server.URL + "\nkey\n")
+	_, _ = wIn.WriteString("https://example.com\nkey\n")
 	_ = wIn.Close()
 	if err := newAuthLoginCommand().RunE(newAuthLoginCommand(), nil); err == nil {
 		t.Fatal("expected LoadConfig error")
@@ -127,10 +133,9 @@ func TestAuthLoginConfigError(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
 	oldWrite := osWriteFile
 	osWriteFile = func(string, []byte, os.FileMode) error { return errors.New("write") }
-	newHTTPClient = func() *http.Client { return server.Client() }
 	rIn2, wIn2, _ := os.Pipe()
 	os.Stdin = rIn2
-	_, _ = wIn2.WriteString(server.URL + "\nkey\n")
+	_, _ = wIn2.WriteString("https://example.com\nkey\n")
 	_ = wIn2.Close()
 	if err := newAuthLoginCommand().RunE(newAuthLoginCommand(), nil); err == nil {
 		t.Fatal("expected SaveConfig error")
@@ -148,45 +153,6 @@ func TestAuthLoginConfigError(t *testing.T) {
 
 	_ = wOut.Close()
 	_, _ = io.Copy(io.Discard, rOut)
-}
-
-func TestAuthLoginHTTPError(t *testing.T) {
-	server := httptest.NewTLSServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/users/current.json" {
-			w.WriteHeader(http.StatusUnauthorized)
-			_, _ = w.Write([]byte("bad"))
-			return
-		}
-		_, _ = w.Write([]byte(`{"ok":true}`))
-	}))
-	defer server.Close()
-
-	t.Setenv("HOME", t.TempDir())
-	hostFlag, apiKeyFlag = server.URL, "k"
-	oldHTTPClient := newHTTPClient
-	newHTTPClient = func() *http.Client { return server.Client() }
-	t.Cleanup(func() { newHTTPClient = oldHTTPClient })
-
-	exited := 0
-	oldExit := exitFunc
-	exitFunc = func(code int) { exited = code }
-	t.Cleanup(func() { exitFunc = oldExit })
-
-	stdinOld, stdoutOld := os.Stdin, os.Stdout
-	rIn, wIn, _ := os.Pipe()
-	rOut, wOut, _ := os.Pipe()
-	os.Stdin = rIn
-	os.Stdout = wOut
-	t.Cleanup(func() { os.Stdin = stdinOld; os.Stdout = stdoutOld })
-
-	_, _ = wIn.WriteString(server.URL + "\nkey\n")
-	_ = wIn.Close()
-	err := newAuthLoginCommand().RunE(newAuthLoginCommand(), nil)
-	_ = wOut.Close()
-	_, _ = io.Copy(io.Discard, rOut)
-	if err == nil || exited != 1 {
-		t.Fatalf("expected auth login error + exit capture: err=%v exited=%d", err, exited)
-	}
 }
 
 func TestAuthStatusCommandSuccess(t *testing.T) {
