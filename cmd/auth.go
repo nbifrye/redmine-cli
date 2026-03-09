@@ -46,15 +46,6 @@ func newAuthLoginCommand() *cobra.Command {
 				return errors.New("API key is required")
 			}
 
-			r := newRuntime(host, apiKey, false, false)
-			raw, code, err := r.DoJSON(RequestOptions{Method: http.MethodGet, Path: "/users/current.json"})
-			if err != nil {
-				if code > 0 {
-					exitFunc(code)
-				}
-				return err
-			}
-
 			cfg, err := LoadConfig()
 			if err != nil {
 				return err
@@ -66,7 +57,7 @@ func newAuthLoginCommand() *cobra.Command {
 			}
 
 			fmt.Fprintln(os.Stdout, "Login successful")
-			return handleRequestResult(raw, 0, nil)
+			return nil
 		},
 	}
 }
