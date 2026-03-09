@@ -5,21 +5,21 @@
 class RedmineCli < Formula
   desc "CLI for interacting with the Redmine REST API"
   homepage "https://github.com/nbifrye/redmine-cli"
-  version "0.1.0"
+  version "0.2.0"
   license "MIT"
 
   on_macos do
     if Hardware::CPU.intel?
-      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.1.0/redmine-cli_0.1.0_darwin_amd64.tar.gz"
-      sha256 "6d74407e72588f05e8e327151a8037197e5f649d9529a53111e34a79456bf532"
+      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.2.0/redmine-cli_0.2.0_darwin_amd64.tar.gz"
+      sha256 "3eef7f2d904c4fc14ef231353e6b3b59ffcc0662c84e2f70827fecb7637aa652"
 
       define_method(:install) do
         bin.install "redmine"
       end
     end
     if Hardware::CPU.arm?
-      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.1.0/redmine-cli_0.1.0_darwin_arm64.tar.gz"
-      sha256 "6ef76d622dfb592d83f0aae48ba5b22ce1b85339dd8ae7c6746e91e524bc9deb"
+      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.2.0/redmine-cli_0.2.0_darwin_arm64.tar.gz"
+      sha256 "d35c93b9c86a1e232201b3ce0a091bb23381e2f04991e30f33a1671820168957"
 
       define_method(:install) do
         bin.install "redmine"
@@ -29,15 +29,15 @@ class RedmineCli < Formula
 
   on_linux do
     if Hardware::CPU.intel? && Hardware::CPU.is_64_bit?
-      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.1.0/redmine-cli_0.1.0_linux_amd64.tar.gz"
-      sha256 "421d73827b37813426eef238d3bf1f44e33441c6ae14e48893fccfbffea1c663"
+      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.2.0/redmine-cli_0.2.0_linux_amd64.tar.gz"
+      sha256 "01cb0f7b1812a217c1ca38f2ef09d7ed5ab73ccad20233eef1833d6e904872d7"
       define_method(:install) do
         bin.install "redmine"
       end
     end
     if Hardware::CPU.arm? && Hardware::CPU.is_64_bit?
-      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.1.0/redmine-cli_0.1.0_linux_arm64.tar.gz"
-      sha256 "9e4459e54f35f061bca4f292a9e1128231d5afa8da151d7add5f56cad7aa6e5c"
+      url "https://github.com/nbifrye/redmine-cli/releases/download/v0.2.0/redmine-cli_0.2.0_linux_arm64.tar.gz"
+      sha256 "4758c6702555e71d63cb19f3942ea1a3772ea28bc263d2eb904ed91ba1e4b924"
       define_method(:install) do
         bin.install "redmine"
       end
