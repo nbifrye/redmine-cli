@@ -58,3 +58,41 @@ redmine api delete /issues/123.json
 ```
 
 グローバルフラグ: `--host`、`--api-key`、`--verbose`、`--debug`
+
+## MCP サーバーとして使う（`redmine mcp serve`）
+
+`redmine mcp serve` を実行すると、標準入出力（stdio）で動作する MCP サーバーとして `redmine` を公開できます。
+MCP クライアント（Claude Desktop / Claude Code など）から、issue / project / user の各サブコマンドをツールとして呼び出せるようになります。
+
+```bash
+redmine mcp serve
+```
+
+### 事前準備
+
+- `redmine auth login` で認証情報を設定しておく
+- または環境変数 `REDMINE_HOST` / `REDMINE_API_KEY` を設定する
+
+### 例: Claude Desktop 設定
+
+`claude_desktop_config.json` などの MCP 設定に以下のように追加します（パスは環境に合わせて変更してください）。
+
+```json
+{
+  "mcpServers": {
+    "redmine": {
+      "command": "/usr/local/bin/redmine",
+      "args": ["mcp", "serve"],
+      "env": {
+        "REDMINE_HOST": "https://redmine.example.com",
+        "REDMINE_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### 補足
+
+- MCP 経由でも、通常 CLI と同じグローバルフラグ（`--host`、`--api-key`、`--verbose`、`--debug`）を利用できます。
+- `issue.list` / `issue.view` / `project.list` / `user.view` など、既存サブコマンドが MCP ツールとして公開されます。
