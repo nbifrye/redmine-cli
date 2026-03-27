@@ -62,7 +62,7 @@ redmine api delete /issues/123.json
 ## MCP サーバーとして使う（`redmine mcp serve`）
 
 `redmine mcp serve` を実行すると、標準入出力（stdio）で動作する MCP サーバーとして `redmine` を公開できます。
-MCP クライアント（Claude Desktop / Claude Code など）から、issue / project / user の各サブコマンドをツールとして呼び出せるようになります。
+MCP クライアント（Codex / Claude Code / Cursor など）から、issue / project / user の各サブコマンドをツールとして呼び出せるようになります。
 
 ```bash
 redmine mcp serve
@@ -73,9 +73,39 @@ redmine mcp serve
 - `redmine auth login` で認証情報を設定しておく
 - または環境変数 `REDMINE_HOST` / `REDMINE_API_KEY` を設定する
 
-### 例: Claude Desktop 設定
+### Codex で使う
 
-`claude_desktop_config.json` などの MCP 設定に以下のように追加します。
+Codex の MCP サーバー設定に、次のサーバー定義を追加します。
+
+```json
+{
+  "mcpServers": {
+    "redmine": {
+      "command": "redmine",
+      "args": ["mcp", "serve"],
+      "env": {
+        "REDMINE_HOST": "https://redmine.example.com",
+        "REDMINE_API_KEY": "your-api-key"
+      }
+    }
+  }
+}
+```
+
+### Claude Code で使う
+
+Claude Code の MCP 設定に同等のサーバー定義を追加するか、CLI から追加します。
+
+```bash
+claude mcp add redmine \
+  --env REDMINE_HOST=https://redmine.example.com \
+  --env REDMINE_API_KEY=your-api-key \
+  -- redmine mcp serve
+```
+
+### Cursor で使う
+
+Cursor の MCP 設定（例: `.cursor/mcp.json`）に、次のように追加します。
 
 ```json
 {
