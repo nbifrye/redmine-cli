@@ -47,6 +47,11 @@ type mcpServer struct {
 	tools map[string]mcpToolDef
 }
 
+var (
+	osPipe    = os.Pipe
+	ioReadAll = io.ReadAll
+)
+
 func newMCPCommand() *cobra.Command {
 	mcpCmd := &cobra.Command{Use: "mcp", Short: "MCP commands"}
 	mcpCmd.AddCommand(newMCPServeCommand())
@@ -349,35 +354,21 @@ func stringifyValue(v any) (string, error) {
 
 func captureStdout(fn func()) (string, error) {
 	old := os.Stdout
-	r, w, err := os.Pipe()
+	r, w, err := osPipe()
 	if err != nil {
 		return "", err
 	}
 	os.Stdout = w
-
-	done := make(chan []byte, 1)
-	errC := make(chan error, 1)
-	go func() {
-		b, e := io.ReadAll(r)
-		if e != nil {
-			errC <- e
-			return
-		}
-		done <- b
-	}()
-
 	fn()
-	_ = w.Close()
 	os.Stdout = old
-
-	select {
-	case e := <-errC:
+	_ = w.Close()
+	b, err := ioReadAll(r)
+	if err != nil {
 		_ = r.Close()
-		return "", e
-	case b := <-done:
-		_ = r.Close()
-		return string(b), nil
+		return "", err
 	}
+	_ = r.Close()
+	return string(b), nil
 }
 
 func (s *mcpServer) serve(in io.Reader, out io.Writer) error {
