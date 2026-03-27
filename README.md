@@ -73,39 +73,9 @@ redmine mcp serve
 - `redmine auth login` で認証情報を設定しておく
 - または環境変数 `REDMINE_HOST` / `REDMINE_API_KEY` を設定する
 
-### Codex で使う
+### Codex / Claude Code / Cursor 共通設定
 
-Codex の MCP サーバー設定に、次のサーバー定義を追加します。
-
-```json
-{
-  "mcpServers": {
-    "redmine": {
-      "command": "redmine",
-      "args": ["mcp", "serve"],
-      "env": {
-        "REDMINE_HOST": "https://redmine.example.com",
-        "REDMINE_API_KEY": "your-api-key"
-      }
-    }
-  }
-}
-```
-
-### Claude Code で使う
-
-Claude Code の MCP 設定に同等のサーバー定義を追加するか、CLI から追加します。
-
-```bash
-claude mcp add redmine \
-  --env REDMINE_HOST=https://redmine.example.com \
-  --env REDMINE_API_KEY=your-api-key \
-  -- redmine mcp serve
-```
-
-### Cursor で使う
-
-Cursor の MCP 設定（例: `.cursor/mcp.json`）に、次のように追加します。
+Codex / Claude Code / Cursor いずれも、MCP サーバー定義は同じです。各クライアントの MCP 設定に、次を追加してください。
 
 ```json
 {
@@ -121,6 +91,8 @@ Cursor の MCP 設定（例: `.cursor/mcp.json`）に、次のように追加し
   }
 }
 ```
+
+> 例: Cursor では `.cursor/mcp.json`、他クライアントでも同等の `mcpServers` 設定に追加します。
 
 ### 補足
 
