@@ -40,6 +40,7 @@ func init() {
 	rootCmd.AddCommand(newProjectCommand())
 	rootCmd.AddCommand(newUserCommand())
 	rootCmd.AddCommand(newAPICommand())
+	rootCmd.AddCommand(newMCPCommand())
 }
 
 func mustRuntime() (*Runtime, error) {
