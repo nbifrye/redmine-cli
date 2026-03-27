@@ -75,13 +75,13 @@ redmine mcp serve
 
 ### 例: Claude Desktop 設定
 
-`claude_desktop_config.json` などの MCP 設定に以下のように追加します（パスは環境に合わせて変更してください）。
+`claude_desktop_config.json` などの MCP 設定に以下のように追加します。
 
 ```json
 {
   "mcpServers": {
     "redmine": {
-      "command": "/usr/local/bin/redmine",
+      "command": "redmine",
       "args": ["mcp", "serve"],
       "env": {
         "REDMINE_HOST": "https://redmine.example.com",
